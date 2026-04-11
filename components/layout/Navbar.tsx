@@ -1,6 +1,8 @@
 "use client";
 
 import { useTheme } from "@/lib/theme";
+import Link from "next/link";
+
 
 interface NavbarProps {
     minimal?: boolean; // true = onboarding (no nav links)
@@ -19,24 +21,27 @@ export default function Navbar({ minimal = false }: NavbarProps) {
             borderBottom: "0.5px solid var(--border)",
             background: "var(--bg)",
         }}>
-            <Logo />
+            <Link href="/" style={{ textDecoration: "none" }}>
+                <Logo />
+            </Link>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 {!minimal && (
                     <div style={{ display: "flex", gap: "4px" }}>
-                        {["Dashboard", "Projects", "Learn"].map(link => (
-                            <a key={link} href={`/${link.toLowerCase()}`} style={{
-                                padding: "6px 12px",
-                                borderRadius: "7px",
-                                fontSize: "13px",
-                                color: "var(--muted)",
-                                textDecoration: "none",
-                                transition: "color 0.15s",
-                            }}
+                        {[
+                            { label: "Dashboard", href: "/dashboard" },
+                            { label: "Learn", href: "/learn "},
+                            { label: "Projects", href: "/projects"},
+                         ].map(item => (
+                             <Link key={item.href} href={item.href} style={{
+                                 padding: "6px 12px", borderRadius: "7px",
+                                 fontSize: "13px", color: "var(--muted)",
+                                 textDecoration: "none", transition: "color 0.15s",
+                             }}
                                 onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
                                 onMouseLeave={e => (e.currentTarget.style.color = "var(--muted)")}
                             >
-                                {link}
-                            </a>
+                                {item.label}
+                            </Link>
                         ))}
                     </div>
                 )}
@@ -48,22 +53,22 @@ export default function Navbar({ minimal = false }: NavbarProps) {
 
 export function Logo() {
     return (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "4px" }}>
+        <div style={{ fontFamily: 'Inter', display: "flex", alignItems: "flex-start"}}>
             {/* SAN with rule below */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                <span style={{ fontSize: "15px", fontWeight: 600, letterSpacing: "0.04em", color: "var(--text)", lineHeight: 1 }}>
+            <div style={{  display: "flex", flexDirection: "column", alignItems: "flex-start" , gap: "2px", margin: "0"}}>
+                <span style={{  margin: "0px", fontSize: "20px", fontWeight: 600, letterSpacing: "0.2em", color: "var(--text)", lineHeight: 1 }}>
                     SAN
                 </span>
-                <div style={{ width: "100%", height: "2px", background: "var(--text)", marginTop: "3px" }} />
+                <div style={{ width: "90%", height: "3px", background: "var(--text)" , margin: "0px"}} />
             </div>
             {/* CO with rule above */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                <div style={{ width: "140%", height: "2px", background: "var(--text)", marginBottom: "3px" }} />
-                <span style={{ fontSize: "15px", fontWeight: 600, letterSpacing: "0.04em", color: "var(--text)", lineHeight: 1 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px", margin: "0" , marginTop: "2px"}}>
+                <div style={{ width: "100%", height: "3px", background: "var(--text)" }} />
+                <span style={{ fontSize: "20px", fontWeight: 600, letterSpacing: "0.2em", color: "var(--text)", lineHeight: 1 }}>
                     CO
                 </span>
             </div>
-            <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 400, alignSelf: "center", marginLeft: "6px" }}>
+            <span style={{ fontSize: "15px", color: "var(--muted)", fontWeight: 400, alignSelf: "end", margin: "0 0 -3px 6px"}}>
                 devs
             </span>
         </div>

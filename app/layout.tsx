@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { Inter } from "next/font/google";
+
+const montserrat = Inter({
+  subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["300", "400", "500", "600"],
+});
 
 export const metadata: Metadata = {
   title: "Sanco Devs",
@@ -13,9 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={" h-full antialiased"}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className={montserrat.variable}>
+      <body>
         <Providers>
           {children}
         </Providers>
