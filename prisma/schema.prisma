@@ -27,6 +27,7 @@ model User {
   accounts     Account[]
   sessions     Session[]
   onboarding   UserOnboarding?
+  progress     UserProgress[]
 }
 
 model Project {
@@ -119,4 +120,16 @@ model UserOnboarding {
   completedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model UserProgress {
+  id         String   @id @default(uuid())
+  userId     String
+  pathId     String
+  moduleIndex Int
+  completedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, pathId, moduleIndex])
 }
