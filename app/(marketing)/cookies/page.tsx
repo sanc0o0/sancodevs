@@ -49,7 +49,7 @@ export default function CookiesPage() {
                 </div>
 
                 <div style={{ padding: "1.25rem 1.5rem", borderRadius: "10px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
-                    <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "6px" }}>We don't use tracking or advertising cookies</p>
+                    <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "6px" }}>We don&apos;t use tracking or advertising cookies</p>
                     <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.7 }}>
                         All cookies on SancoDevs are either essential for the platform to function or store your personal preferences. We have no advertising partners and do not track you across other websites.
                     </p>
