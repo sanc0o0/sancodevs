@@ -42,6 +42,8 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                         <button
                             onClick={() => setDrawerOpen(true)}
                             className="show-mobile"
+                            title="Open navigation menu"
+                            aria-label="Open navigation menu"
                             style={{
                                 width: "34px", height: "34px", borderRadius: "8px",
                                 border: "0.5px solid var(--border)", background: "transparent",
@@ -202,6 +204,8 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                     <Logo />
                     <button
                         onClick={() => setDrawerOpen(false)}
+                        title="Close navigation menu"
+                        aria-label="Close navigation menu"
                         style={{
                             width: "32px", height: "32px", borderRadius: "8px",
                             border: "0.5px solid var(--border)", background: "transparent",
