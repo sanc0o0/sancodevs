@@ -12,34 +12,67 @@ interface NavbarProps {
 export default function Navbar({ minimal = false }: NavbarProps) {
     const { theme, toggle } = useTheme();
     const { data: session } = useSession();
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
 
-    return (
-        <nav style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "0 1.5rem", height: "54px",
-            borderBottom: "0.5px solid var(--border)",
-            background: "var(--bg)", flexShrink: 0,
-            position: "relative", zIndex: 50,
-        }}>
-            {/* Logo */}
-            <Link href="/" style={{ textDecoration: "none", flexShrink: 0 }}>
-                <Logo />
-            </Link>
+    const navLinks = session
+        ? [
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Learn", href: "/learn" },
+            { label: "Projects", href: "/projects" },
+            { label: "Profile", href: "/profile" },
+        ]
+        : [
+            { label: "Sign in", href: "/login" },
+            { label: "Get started", href: "/signup" },
+        ];
 
-            {/* Desktop nav */}
-            {!minimal && (
-                <div className="hidden-mobile" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    {session && (
-                        <>
+    return (
+        <>
+            <nav style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "0 1.25rem", height: "54px",
+                borderBottom: "0.5px solid var(--border)",
+                background: "var(--bg)", flexShrink: 0,
+                position: "relative", zIndex: 50,
+            }}>
+                {/* Left: hamburger (mobile) + logo */}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {!minimal && (
+                        <button
+                            onClick={() => setDrawerOpen(true)}
+                            className="show-mobile"
+                            style={{
+                                width: "34px", height: "34px", borderRadius: "8px",
+                                border: "0.5px solid var(--border)", background: "transparent",
+                                color: "var(--text)", cursor: "pointer",
+                                display: "none", alignItems: "center", justifyContent: "center",
+                            }}
+                        >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <line x1="3" y1="12" x2="21" y2="12" />
+                                <line x1="3" y1="18" x2="21" y2="18" />
+                            </svg>
+                        </button>
+                    )}
+                    <Link href="/" style={{ textDecoration: "none" }}>
+                        <Logo />
+                    </Link>
+                </div>
+
+                {/* Right: desktop nav links + theme + avatar */}
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    {/* Desktop nav links — hidden on mobile */}
+                    {!minimal && session && (
+                        <div className="hidden-mobile" style={{ display: "flex", gap: "2px" }}>
                             {[
                                 { label: "Dashboard", href: "/dashboard" },
                                 { label: "Learn", href: "/learn" },
                                 { label: "Projects", href: "/projects" },
                             ].map(item => (
                                 <Link key={item.href} href={item.href} style={{
-                                    padding: "6px 12px", borderRadius: "7px",
+                                    padding: "6px 11px", borderRadius: "7px",
                                     fontSize: "13px", color: "var(--muted)",
                                     textDecoration: "none", transition: "color 0.15s",
                                 }}
@@ -49,203 +82,222 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                                     {item.label}
                                 </Link>
                             ))}
-                        </>
+                        </div>
                     )}
-                </div>
-            )}
 
-            {/* Right side */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <ThemeToggle theme={theme} toggle={toggle} />
+                    {!minimal && !session && (
+                        <div className="hidden-mobile" style={{ display: "flex", gap: "6px" }}>
+                            <Link href="/login" style={{
+                                padding: "6px 14px", borderRadius: "7px", fontSize: "13px",
+                                border: "0.5px solid var(--border)", color: "var(--muted)",
+                                textDecoration: "none",
+                            }}>Sign in</Link>
+                            <Link href="/signup" style={{
+                                padding: "6px 14px", borderRadius: "7px", fontSize: "13px",
+                                background: "var(--accent)", color: "var(--bg)",
+                                textDecoration: "none", fontWeight: 500,
+                            }}>Get started</Link>
+                        </div>
+                    )}
 
-                {!minimal && !session && (
-                    <div className="hidden-mobile" style={{ display: "flex", gap: "6px" }}>
-                        <Link href="/login" style={{
-                            padding: "6px 14px", borderRadius: "7px", fontSize: "13px",
-                            border: "0.5px solid var(--border)", color: "var(--muted)",
-                            textDecoration: "none",
-                        }}>
-                            Sign in
-                        </Link>
-                        <Link href="/signup" style={{
-                            padding: "6px 14px", borderRadius: "7px", fontSize: "13px",
-                            background: "var(--accent)", color: "var(--bg)",
-                            textDecoration: "none", fontWeight: 500,
-                        }}>
-                            Get started
-                        </Link>
+                    {/* Theme toggle — hidden on mobile (moved to drawer) */}
+                    <div className="hidden-mobile">
+                        <ThemeToggle theme={theme} toggle={toggle} />
                     </div>
-                )}
 
-                {/* Profile dropdown */}
-                {!minimal && session && (
-                    <div style={{ position: "relative" }}>
-                        <button
-                            onClick={() => setDropdownOpen(o => !o)}
-                            style={{
-                                width: "32px", height: "32px", borderRadius: "50%",
-                                border: "0.5px solid var(--border)", background: "var(--surface2)",
-                                cursor: "pointer", overflow: "hidden",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                padding: 0,
-                            }}
-                        >
-                            {session.user?.image ? (
-                                <img src={session.user.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            ) : (
-                                <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>
-                                    {session.user?.name?.charAt(0).toUpperCase()}
-                                </span>
-                            )}
-                        </button>
-
-                        {dropdownOpen && (
-                            <>
-                                {/* Backdrop */}
-                                <div
-                                    onClick={() => setDropdownOpen(false)}
-                                    style={{ position: "fixed", inset: 0, zIndex: 40 }}
-                                />
-                                {/* Dropdown */}
-                                <div style={{
-                                    position: "absolute", right: 0, top: "calc(100% + 8px)",
-                                    width: "200px", borderRadius: "10px",
-                                    border: "0.5px solid var(--border)", background: "var(--surface)",
-                                    zIndex: 50, overflow: "hidden",
-                                    animation: "fadeIn 0.1s ease",
-                                }}>
-                                    <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--border)" }}>
-                                        <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>
-                                            {session.user?.name}
-                                        </p>
-                                        <p style={{ fontSize: "11px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                            {session.user?.email}
-                                        </p>
-                                    </div>
-                                    {[
-                                        { label: "Profile", href: "/profile" },
-                                        { label: "Dashboard", href: "/dashboard" },
-                                        { label: "Learn", href: "/learn" },
-                                    ].map(item => (
-                                        <Link key={item.href} href={item.href}
-                                            onClick={() => setDropdownOpen(false)}
-                                            style={{
-                                                display: "block", padding: "9px 14px",
-                                                fontSize: "13px", color: "var(--muted)",
-                                                textDecoration: "none", transition: "background 0.1s",
-                                                borderBottom: "0.5px solid var(--border)",
-                                            }}
-                                            onMouseEnter={e => {
-                                                e.currentTarget.style.background = "var(--surface2)";
-                                                e.currentTarget.style.color = "var(--text)";
-                                            }}
-                                            onMouseLeave={e => {
-                                                e.currentTarget.style.background = "transparent";
-                                                e.currentTarget.style.color = "var(--muted)";
-                                            }}
-                                        >
-                                            {item.label}
-                                        </Link>
-                                    ))}
-                                    <button
-                                        onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: "/" }); }}
-                                        style={{
-                                            display: "block", width: "100%", textAlign: "left",
-                                            padding: "9px 14px", fontSize: "13px",
-                                            color: "var(--muted)", background: "transparent",
-                                            border: "none", cursor: "pointer", transition: "background 0.1s",
-                                        }}
-                                        onMouseEnter={e => {
-                                            e.currentTarget.style.background = "var(--surface2)";
-                                            e.currentTarget.style.color = "var(--text)";
-                                        }}
-                                        onMouseLeave={e => {
-                                            e.currentTarget.style.background = "transparent";
-                                            e.currentTarget.style.color = "var(--muted)";
-                                        }}
-                                    >
-                                        Sign out
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                )}
-
-                {/* Mobile hamburger */}
-                {!minimal && (
-                    <button
-                        className="show-mobile"
-                        onClick={() => setMenuOpen(o => !o)}
-                        style={{
-                            display: "none", width: "34px", height: "34px",
-                            borderRadius: "8px", border: "0.5px solid var(--border)",
-                            background: "transparent", color: "var(--text)",
-                            cursor: "pointer", alignItems: "center", justifyContent: "center",
-                        }}
-                    >
-                        {menuOpen ? (
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                        ) : (
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-                            </svg>
-                        )}
-                    </button>
-                )}
-            </div>
-
-            {/* Mobile menu */}
-            {!minimal && menuOpen && (
-                <div style={{
-                    position: "absolute", top: "54px", left: 0, right: 0,
-                    background: "var(--bg)", borderBottom: "0.5px solid var(--border)",
-                    padding: "1rem 1.5rem", zIndex: 50,
-                    display: "flex", flexDirection: "column", gap: "4px",
-                    animation: "slideDown 0.15s ease",
-                }}>
-                    {session ? (
-                        <>
-                            {[
-                                { label: "Dashboard", href: "/dashboard" },
-                                { label: "Learn", href: "/learn" },
-                                { label: "Projects", href: "/projects" },
-                                { label: "Profile", href: "/profile" },
-                            ].map(item => (
-                                <Link key={item.href} href={item.href}
-                                    onClick={() => setMenuOpen(false)}
-                                    style={{
-                                        padding: "10px 12px", borderRadius: "7px",
-                                        fontSize: "14px", color: "var(--muted)",
-                                        textDecoration: "none",
-                                    }}
-                                >
-                                    {item.label}
-                                </Link>
-                            ))}
+                    {/* Avatar + dropdown — desktop only */}
+                    {!minimal && session && (
+                        <div className="hidden-mobile" style={{ position: "relative" }}>
                             <button
-                                onClick={() => signOut({ callbackUrl: "/" })}
+                                onClick={() => setDropdownOpen(o => !o)}
                                 style={{
-                                    padding: "10px 12px", borderRadius: "7px",
-                                    fontSize: "14px", color: "var(--muted)",
-                                    background: "transparent", border: "none",
-                                    textAlign: "left", cursor: "pointer",
+                                    width: "32px", height: "32px", borderRadius: "50%",
+                                    border: "0.5px solid var(--border)", background: "var(--surface2)",
+                                    cursor: "pointer", overflow: "hidden", padding: 0,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
                                 }}
                             >
-                                Sign out
+                                {session.user?.image
+                                    ? <img src={session.user.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                    : <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>{session.user?.name?.charAt(0).toUpperCase()}</span>
+                                }
                             </button>
-                        </>
-                    ) : (
-                        <>
-                            <Link href="/login" onClick={() => setMenuOpen(false)} style={{ padding: "10px 12px", fontSize: "14px", color: "var(--muted)", textDecoration: "none" }}>Sign in</Link>
-                            <Link href="/signup" onClick={() => setMenuOpen(false)} style={{ padding: "10px 12px", fontSize: "14px", color: "var(--text)", textDecoration: "none", fontWeight: 500 }}>Get started</Link>
-                        </>
+
+                            {dropdownOpen && (
+                                <>
+                                    <div onClick={() => setDropdownOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                                    <div style={{
+                                        position: "absolute", right: 0, top: "calc(100% + 8px)",
+                                        width: "200px", borderRadius: "10px",
+                                        border: "0.5px solid var(--border)", background: "var(--surface)",
+                                        zIndex: 50, overflow: "hidden",
+                                        animation: "fadeIn 0.12s ease",
+                                    }}>
+                                        <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--border)" }}>
+                                            <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>{session.user?.name}</p>
+                                            <p style={{ fontSize: "11px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.user?.email}</p>
+                                        </div>
+                                        {[
+                                            { label: "Profile", href: "/profile" },
+                                            { label: "Dashboard", href: "/dashboard" },
+                                        ].map(item => (
+                                            <Link key={item.href} href={item.href}
+                                                onClick={() => setDropdownOpen(false)}
+                                                style={{
+                                                    display: "block", padding: "9px 14px",
+                                                    fontSize: "13px", color: "var(--muted)",
+                                                    textDecoration: "none", borderBottom: "0.5px solid var(--border)",
+                                                    transition: "background 0.1s",
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = "var(--surface2)"; e.currentTarget.style.color = "var(--text)"; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--muted)"; }}
+                                            >{item.label}</Link>
+                                        ))}
+                                        <button
+                                            onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: "/" }); }}
+                                            style={{
+                                                display: "block", width: "100%", textAlign: "left",
+                                                padding: "9px 14px", fontSize: "13px", color: "var(--muted)",
+                                                background: "transparent", border: "none", cursor: "pointer",
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = "var(--surface2)"; e.currentTarget.style.color = "var(--text)"; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--muted)"; }}
+                                        >Sign out</button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     )}
                 </div>
+            </nav>
+
+            {/* Mobile drawer backdrop */}
+            {drawerOpen && (
+                <div
+                    onClick={() => setDrawerOpen(false)}
+                    style={{
+                        position: "fixed", inset: 0, zIndex: 60,
+                        background: "rgba(0,0,0,0.5)",
+                        animation: "fadeIn 0.2s ease",
+                    }}
+                />
             )}
-        </nav>
+
+            {/* Mobile drawer — slides from left */}
+            <div style={{
+                position: "fixed", top: 0, left: 0, bottom: 0,
+                width: "260px", zIndex: 70,
+                background: "var(--bg)",
+                borderRight: "0.5px solid var(--border)",
+                display: "flex", flexDirection: "column",
+                transform: drawerOpen ? "translateX(0)" : "translateX(-100%)",
+                transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}>
+                {/* Drawer header */}
+                <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "0 1.25rem", height: "54px",
+                    borderBottom: "0.5px solid var(--border)", flexShrink: 0,
+                }}>
+                    <Logo />
+                    <button
+                        onClick={() => setDrawerOpen(false)}
+                        style={{
+                            width: "32px", height: "32px", borderRadius: "8px",
+                            border: "0.5px solid var(--border)", background: "transparent",
+                            color: "var(--text)", cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* User info (if logged in) */}
+                {session && (
+                    <div style={{
+                        padding: "1rem 1.25rem",
+                        borderBottom: "0.5px solid var(--border)",
+                        display: "flex", alignItems: "center", gap: "10px",
+                    }}>
+                        <div style={{
+                            width: "36px", height: "36px", borderRadius: "50%",
+                            border: "0.5px solid var(--border)", overflow: "hidden",
+                            flexShrink: 0, background: "var(--surface2)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                            {session.user?.image
+                                ? <img src={session.user.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                : <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)" }}>{session.user?.name?.charAt(0).toUpperCase()}</span>
+                            }
+                        </div>
+                        <div style={{ overflow: "hidden" }}>
+                            <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>{session.user?.name}</p>
+                            <p style={{ fontSize: "11px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.user?.email}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Nav links */}
+                <nav style={{ flex: 1, padding: "0.75rem 0.75rem", display: "flex", flexDirection: "column", gap: "2px", overflowY: "auto" }}>
+                    {navLinks.map(item => (
+                        <Link key={item.href} href={item.href}
+                            onClick={() => setDrawerOpen(false)}
+                            style={{
+                                display: "flex", alignItems: "center",
+                                padding: "10px 12px", borderRadius: "8px",
+                                fontSize: "14px", color: "var(--muted)",
+                                textDecoration: "none", transition: "background 0.15s, color 0.15s",
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "var(--surface2)"; e.currentTarget.style.color = "var(--text)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--muted)"; }}
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
+                </nav>
+
+                {/* Drawer footer — theme + sign out */}
+                <div style={{
+                    padding: "0.75rem 0.75rem",
+                    borderTop: "0.5px solid var(--border)",
+                    display: "flex", flexDirection: "column", gap: "6px",
+                }}>
+                    {/* Theme toggle row */}
+                    <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "8px 12px", borderRadius: "8px",
+                        border: "0.5px solid var(--border)", background: "var(--surface)",
+                    }}>
+                        <span style={{ fontSize: "13px", color: "var(--muted)" }}>
+                            {theme === "dark" ? "Dark mode" : "Light mode"}
+                        </span>
+                        <ThemeToggle theme={theme} toggle={toggle} />
+                    </div>
+
+                    {session && (
+                        <button
+                            onClick={() => { setDrawerOpen(false); signOut({ callbackUrl: "/" }); }}
+                            style={{
+                                width: "100%", padding: "10px 12px", borderRadius: "8px",
+                                fontSize: "13px", color: "var(--muted)",
+                                background: "transparent",
+                                border: "0.5px solid var(--border)",
+                                cursor: "pointer", textAlign: "left",
+                                transition: "background 0.15s",
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = "var(--surface2)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                        >
+                            Sign out
+                        </button>
+                    )}
+                </div>
+            </div>
+        </>
     );
 }
 
@@ -254,7 +306,7 @@ export function Logo() {
         <div style={{ fontFamily: 'Inter', display: "flex", alignItems: "flex-start" }}>
             {/* SAN with rule below */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px", margin: "0" }}>
-                <span style={{ margin: "0px", fontSize: "20px", fontWeight: 600, letterSpacing: "0.2em", color: "var(--text)", lineHeight: 1 }}>
+                <span style={{ margin: "0px", fontSize: "18px", fontWeight: 600, letterSpacing: "0.2em", color: "var(--text)", lineHeight: 1 }}>
                     SAN
                 </span>
                 <div style={{ width: "90%", height: "3px", background: "var(--text)", margin: "0px" }} />
@@ -262,7 +314,7 @@ export function Logo() {
             {/* CO with rule above */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px", margin: "0", marginTop: "2px" }}>
                 <div style={{ width: "100%", height: "3px", background: "var(--text)" }} />
-                <span style={{ fontSize: "20px", fontWeight: 600, letterSpacing: "0.2em", color: "var(--text)", lineHeight: 1 }}>
+                <span style={{ fontSize: "18px", fontWeight: 600, letterSpacing: "0.2em", color: "var(--text)", lineHeight: 1 }}>
                     CO
                 </span>
             </div>
@@ -281,19 +333,10 @@ export function ThemeToggle({ theme, toggle }: { theme: string; toggle: () => vo
             color: "var(--text)", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-            {theme === "dark" ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <circle cx="12" cy="12" r="5" />
-                    <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                    <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                </svg>
-            ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-            )}
+            {theme === "dark"
+                ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+                : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+            }
         </button>
     );
 }

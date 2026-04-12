@@ -53,3 +53,12 @@ body {
 @media (min-width: 769px) {
   .show-mobile { display: none !important; }
 }
+
+@media (max-width: 768px) {
+  .hidden-mobile { display: none !important; }
+  .show-mobile   { display: flex !important; }
+}
+
+@media (min-width: 769px) {
+  .show-mobile { display: none !important; }
+}

@@ -69,7 +69,8 @@ export default function Sidebar() {
             position: "sticky",
             top: 0,
             height: "calc(100vh - 54px)",
-        }}>
+        }} className="hidden-mobile"> 
+        
             {/* Nav links */}
             <nav style={{ padding: "1.25rem 1rem", display: "flex", flexDirection: "column", gap: "2px" }}>
                 {links.map(link => {
