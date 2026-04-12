@@ -28,6 +28,20 @@ body {
   transition: background 0.2s, color 0.2s;
 }
 
+.card-hover {
+  transition: border-color 0.15s;
+}
+.card-hover:hover {
+  border-color: var(--accent);
+}
+
+.link-hover {
+  transition: color 0.15s;
+}
+.link-hover:hover {
+  color: var(--text) !important;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }

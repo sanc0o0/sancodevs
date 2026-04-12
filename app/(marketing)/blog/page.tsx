@@ -35,14 +35,17 @@ export default function BlogPage() {
             <div style={{ maxWidth: "720px", margin: "0 auto", padding: "0 2rem 5rem" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {posts.map(post => (
-                        <Link key={post.slug} href={`/blog/${post.slug}`} style={{
-                            display: "block", padding: "1.5rem",
-                            borderRadius: "11px", border: "0.5px solid var(--border)",
-                            background: "var(--surface)", textDecoration: "none",
-                            transition: "border-color 0.15s",
-                        }}
-                            onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--accent)")}
-                            onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                        <Link
+                            key={post.slug}
+                            href={`/blog/${post.slug}`}
+                            className="card-hover"
+                            style={{
+                                display: "block", padding: "1.5rem",
+                                borderRadius: "11px",
+                                border: "0.5px solid var(--border)",
+                                background: "var(--surface)",
+                                textDecoration: "none",
+                            }}
                         >
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                 <span style={{
