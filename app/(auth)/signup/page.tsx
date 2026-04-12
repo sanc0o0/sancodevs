@@ -16,79 +16,90 @@ export default function SignupPage() {
         e.preventDefault();
         setLoading(true);
         setError("");
-
         const res = await fetch("/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, email, password }),
         });
-
         const data = await res.json();
         setLoading(false);
-
-        if (!res.ok) {
-            setError(data.error || "Something went wrong.");
-        } else {
-            router.push("/login?registered=true");
-        }
+        if (!res.ok) setError(data.error || "Something went wrong.");
+        else router.push("/login?registered=true");
     }
 
+    const fields = [
+        { label: "Name", type: "text", value: name, setter: setName, placeholder: "Your name" },
+        { label: "Email", type: "email", value: email, setter: setEmail, placeholder: "you@example.com" },
+        { label: "Password", type: "password", value: password, setter: setPassword, placeholder: "Min. 8 characters" },
+    ];
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-950">
-            <div className="w-full max-w-md bg-gray-900 rounded-2xl p-8 shadow-xl">
-                <h1 className="text-2xl font-bold text-white mb-2">Create account</h1>
-                <p className="text-gray-400 text-sm mb-8">Join SancoDevs</p>
+        <div style={{
+            minHeight: "100vh", display: "flex", alignItems: "center",
+            justifyContent: "center", background: "var(--bg)", padding: "1.5rem",
+        }}>
+            <div style={{
+                width: "100%", maxWidth: "400px",
+                border: "0.5px solid var(--border)", borderRadius: "14px",
+                background: "var(--surface)", padding: "2rem",
+                animation: "fadeUp 0.4s ease both",
+            }}>
+                <div style={{ marginBottom: "1.75rem" }}>
+                    <div style={{ width: "24px", height: "2px", background: "var(--accent)", marginBottom: "1rem" }} />
+                    <h1 style={{ fontSize: "20px", fontWeight: 500, color: "var(--text)", marginBottom: "4px" }}>
+                        Create account
+                    </h1>
+                    <p style={{ fontSize: "13px", color: "var(--muted)" }}>Join SancoDevs</p>
+                </div>
 
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <div>
-                        <label className="text-sm text-gray-400 mb-1 block">Name</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            className="w-full bg-gray-800 text-white px-4 py-2.5 rounded-lg border border-gray-700 focus:outline-none focus:border-indigo-500"
-                            placeholder="Your name"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm text-gray-400 mb-1 block">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="w-full bg-gray-800 text-white px-4 py-2.5 rounded-lg border border-gray-700 focus:outline-none focus:border-indigo-500"
-                            placeholder="you@example.com"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm text-gray-400 mb-1 block">Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength={8}
-                            className="w-full bg-gray-800 text-white px-4 py-2.5 rounded-lg border border-gray-700 focus:outline-none focus:border-indigo-500"
-                            placeholder="Min. 8 characters"
-                        />
-                    </div>
+                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {fields.map(field => (
+                        <div key={field.label}>
+                            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>
+                                {field.label}
+                            </label>
+                            <input
+                                type={field.type}
+                                value={field.value}
+                                onChange={e => field.setter(e.target.value)}
+                                required
+                                minLength={field.type === "password" ? 8 : undefined}
+                                placeholder={field.placeholder}
+                                style={{
+                                    width: "100%", padding: "9px 12px", borderRadius: "8px",
+                                    border: "0.5px solid var(--border)", background: "var(--bg)",
+                                    color: "var(--text)", fontSize: "13px", outline: "none",
+                                    transition: "border-color 0.15s", boxSizing: "border-box",
+                                }}
+                                onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
+                                onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                            />
+                        </div>
+                    ))}
 
-                    {error && <p className="text-red-400 text-sm">{error}</p>}
+                    {error && (
+                        <p style={{ fontSize: "12px", color: "#e24b4a" }}>{error}</p>
+                    )}
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-lg transition"
+                        style={{
+                            width: "100%", padding: "9px", borderRadius: "8px",
+                            fontSize: "13px", fontWeight: 500,
+                            background: "var(--accent)", color: "var(--bg)",
+                            border: "none", cursor: loading ? "not-allowed" : "pointer",
+                            opacity: loading ? 0.6 : 1, transition: "opacity 0.15s",
+                            marginTop: "4px",
+                        }}
                     >
                         {loading ? "Creating account..." : "Create account"}
                     </button>
                 </form>
 
-                <p className="text-gray-500 text-sm text-center mt-6">
+                <p style={{ fontSize: "12px", color: "var(--muted)", textAlign: "center", marginTop: "1.25rem" }}>
                     Already have an account?{" "}
-                    <Link href="/login" className="text-indigo-400 hover:underline">
+                    <Link href="/login" style={{ color: "var(--text)", textDecoration: "none", fontWeight: 500 }}>
                         Sign in
                     </Link>
                 </p>
