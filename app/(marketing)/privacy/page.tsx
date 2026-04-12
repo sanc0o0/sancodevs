@@ -5,8 +5,8 @@ const sections = [
     { title: "How we use it", body: "We use your information to provide the SancoDevs service: to personalise your learning path, track your progress, and communicate with you about your account. We do not sell your data to third parties." },
     { title: "Cookies", body: "We use cookies to keep you signed in and to remember your preferences such as theme. We do not use tracking or advertising cookies." },
     { title: "Third-party services", body: "We use Vercel for hosting, Neon for our database, and NextAuth for authentication. Each of these services has their own privacy policy. We use Google and GitHub OAuth for sign-in — only the information you explicitly grant is shared with us." },
-    { title: "Your rights", body: "You can request deletion of your account and all associated data at any time by emailing privacy@sancodevs.com. We will process requests within 30 days." },
-    { title: "Contact", body: "If you have questions about this policy, contact us at privacy@sancodevs.com." },
+    { title: "Your rights", body: "You can request deletion of your account and all associated data at any time by emailing sanansari0305@gmail.com. We will process requests within 30 days." },
+    { title: "Contact", body: "If you have questions about this policy, contact us at sanansari0305@gmail.com." },
 ];
 
 export default function PrivacyPage() {

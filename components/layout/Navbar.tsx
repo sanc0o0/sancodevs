@@ -5,9 +5,7 @@ import { useTheme } from "@/lib/theme";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 
-interface NavbarProps {
-    minimal?: boolean;
-}
+interface NavbarProps { minimal?: boolean; }
 
 export default function Navbar({ minimal = false }: NavbarProps) {
     const { theme, toggle } = useTheme();
@@ -36,21 +34,20 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                 background: "var(--bg)", flexShrink: 0,
                 position: "relative", zIndex: 50,
             }}>
-                {/* Left: hamburger (mobile) + logo */}
+                {/* Left: hamburger (mobile only) + logo */}
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     {!minimal && (
-                        <button
-                            onClick={() => setDrawerOpen(true)}
-                            className="show-mobile"
+                        <button 
+                            onClick={() => setDrawerOpen(true)} 
+                            className="show-mobile" 
                             title="Open navigation menu"
                             aria-label="Open navigation menu"
                             style={{
-                                width: "34px", height: "34px", borderRadius: "8px",
-                                border: "0.5px solid var(--border)", background: "transparent",
-                                color: "var(--text)", cursor: "pointer",
-                                display: "none", alignItems: "center", justifyContent: "center",
-                            }}
-                        >
+                            width: "34px", height: "34px", borderRadius: "8px",
+                            border: "0.5px solid var(--border)", background: "transparent",
+                            color: "var(--text)", cursor: "pointer",
+                            display: "none", alignItems: "center", justifyContent: "center",
+                        }}>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <line x1="3" y1="6" x2="21" y2="6" />
                                 <line x1="3" y1="12" x2="21" y2="12" />
@@ -58,35 +55,17 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                             </svg>
                         </button>
                     )}
-                    <Link href="/" style={{ textDecoration: "none" }}>
-                        <Logo />
-                    </Link>
+                    <Link href="/" style={{ textDecoration: "none" }}><Logo /></Link>
                 </div>
 
-                {/* Right: desktop nav links + theme + avatar */}
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    {/* Desktop nav links — hidden on mobile */}
-                    {!minimal && session && (
-                        <div className="hidden-mobile" style={{ display: "flex", gap: "2px" }}>
-                            {[
-                                { label: "Dashboard", href: "/dashboard" },
-                                { label: "Learn", href: "/learn" },
-                                { label: "Projects", href: "/projects" },
-                            ].map(item => (
-                                <Link key={item.href} href={item.href} style={{
-                                    padding: "6px 11px", borderRadius: "7px",
-                                    fontSize: "13px", color: "var(--muted)",
-                                    textDecoration: "none", transition: "color 0.15s",
-                                }}
-                                    onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
-                                    onMouseLeave={e => (e.currentTarget.style.color = "var(--muted)")}
-                                >
-                                    {item.label}
-                                </Link>
-                            ))}
-                        </div>
-                    )}
+                {/* Right */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {/* Theme toggle — desktop only */}
+                    <div className="hidden-mobile">
+                        <ThemeToggle theme={theme} toggle={toggle} />
+                    </div>
 
+                    {/* NOT logged in — show auth buttons on desktop */}
                     {!minimal && !session && (
                         <div className="hidden-mobile" style={{ display: "flex", gap: "6px" }}>
                             <Link href="/login" style={{
@@ -102,23 +81,15 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                         </div>
                     )}
 
-                    {/* Theme toggle — hidden on mobile (moved to drawer) */}
-                    <div className="hidden-mobile">
-                        <ThemeToggle theme={theme} toggle={toggle} />
-                    </div>
-
-                    {/* Avatar + dropdown — desktop only */}
+                    {/* Logged in — avatar + dropdown only (no separate nav links) */}
                     {!minimal && session && (
                         <div className="hidden-mobile" style={{ position: "relative" }}>
-                            <button
-                                onClick={() => setDropdownOpen(o => !o)}
-                                style={{
-                                    width: "32px", height: "32px", borderRadius: "50%",
-                                    border: "0.5px solid var(--border)", background: "var(--surface2)",
-                                    cursor: "pointer", overflow: "hidden", padding: 0,
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                }}
-                            >
+                            <button onClick={() => setDropdownOpen(o => !o)} style={{
+                                width: "32px", height: "32px", borderRadius: "50%",
+                                border: "0.5px solid var(--border)", background: "var(--surface2)",
+                                cursor: "pointer", overflow: "hidden", padding: 0,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>
                                 {session.user?.image
                                     ? <img src={session.user.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                     : <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>{session.user?.name?.charAt(0).toUpperCase()}</span>
@@ -130,7 +101,7 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                                     <div onClick={() => setDropdownOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
                                     <div style={{
                                         position: "absolute", right: 0, top: "calc(100% + 8px)",
-                                        width: "200px", borderRadius: "10px",
+                                        width: "210px", borderRadius: "10px",
                                         border: "0.5px solid var(--border)", background: "var(--surface)",
                                         zIndex: 50, overflow: "hidden",
                                         animation: "fadeIn 0.12s ease",
@@ -140,87 +111,99 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                                             <p style={{ fontSize: "11px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.user?.email}</p>
                                         </div>
                                         {[
-                                            { label: "Profile", href: "/profile" },
                                             { label: "Dashboard", href: "/dashboard" },
+                                            { label: "Learn", href: "/learn" },
+                                            { label: "Projects", href: "/projects" },
+                                            { label: "Profile", href: "/profile" },
                                         ].map(item => (
                                             <Link key={item.href} href={item.href}
                                                 onClick={() => setDropdownOpen(false)}
+                                                className="dropdown-item"
                                                 style={{
                                                     display: "block", padding: "9px 14px",
                                                     fontSize: "13px", color: "var(--muted)",
-                                                    textDecoration: "none", borderBottom: "0.5px solid var(--border)",
-                                                    transition: "background 0.1s",
+                                                    textDecoration: "none",
+                                                    borderBottom: "0.5px solid var(--border)",
                                                 }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = "var(--surface2)"; e.currentTarget.style.color = "var(--text)"; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--muted)"; }}
                                             >{item.label}</Link>
                                         ))}
                                         <button
                                             onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: "/" }); }}
+                                            className="dropdown-item"
                                             style={{
                                                 display: "block", width: "100%", textAlign: "left",
                                                 padding: "9px 14px", fontSize: "13px", color: "var(--muted)",
                                                 background: "transparent", border: "none", cursor: "pointer",
                                             }}
-                                            onMouseEnter={e => { e.currentTarget.style.background = "var(--surface2)"; e.currentTarget.style.color = "var(--text)"; }}
-                                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--muted)"; }}
                                         >Sign out</button>
                                     </div>
                                 </>
                             )}
                         </div>
                     )}
+
+                    {/* Mobile hamburger */}
+                    {!minimal && (
+                        <button 
+                            onClick={() => setDrawerOpen(true)} 
+                            className="show-mobile" 
+                            title="Open navigation menu"
+                            aria-label="Open navigation menu"
+                            style={{
+                            width: "34px", height: "34px", borderRadius: "8px",
+                            border: "0.5px solid var(--border)", background: "transparent",
+                            color: "var(--text)", cursor: "pointer",
+                            display: "none", alignItems: "center", justifyContent: "center",
+                        }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <line x1="3" y1="12" x2="21" y2="12" />
+                                <line x1="3" y1="18" x2="21" y2="18" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
             </nav>
 
-            {/* Mobile drawer backdrop */}
+            {/* Drawer backdrop */}
             {drawerOpen && (
-                <div
-                    onClick={() => setDrawerOpen(false)}
-                    style={{
-                        position: "fixed", inset: 0, zIndex: 60,
-                        background: "rgba(0,0,0,0.5)",
-                        animation: "fadeIn 0.2s ease",
-                    }}
-                />
+                <div onClick={() => setDrawerOpen(false)} style={{
+                    position: "fixed", inset: 0, zIndex: 60,
+                    background: "rgba(0,0,0,0.5)", animation: "fadeIn 0.2s ease",
+                }} />
             )}
 
-            {/* Mobile drawer — slides from left */}
+            {/* Mobile drawer */}
             <div style={{
-                position: "fixed", top: 0, left: 0, bottom: 0,
-                width: "260px", zIndex: 70,
-                background: "var(--bg)",
+                position: "fixed", top: 0, left: 0, bottom: 0, width: "260px",
+                zIndex: 70, background: "var(--bg)",
                 borderRight: "0.5px solid var(--border)",
                 display: "flex", flexDirection: "column",
                 transform: drawerOpen ? "translateX(0)" : "translateX(-100%)",
-                transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                transition: "transform 0.25s cubic-bezier(0.4,0,0.2,1)",
             }}>
-                {/* Drawer header */}
                 <div style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "0 1.25rem", height: "54px",
                     borderBottom: "0.5px solid var(--border)", flexShrink: 0,
                 }}>
                     <Logo />
-                    <button
-                        onClick={() => setDrawerOpen(false)}
+                    <button 
+                        onClick={() => setDrawerOpen(false)} 
                         title="Close navigation menu"
                         aria-label="Close navigation menu"
                         style={{
-                            width: "32px", height: "32px", borderRadius: "8px",
-                            border: "0.5px solid var(--border)", background: "transparent",
-                            color: "var(--text)", cursor: "pointer",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                        }}
-                    >
+                        width: "32px", height: "32px", borderRadius: "8px",
+                        border: "0.5px solid var(--border)", background: "transparent",
+                        color: "var(--text)", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                     </button>
                 </div>
 
-                {/* User info (if logged in) */}
                 {session && (
                     <div style={{
                         padding: "1rem 1.25rem",
@@ -245,59 +228,37 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                     </div>
                 )}
 
-                {/* Nav links */}
-                <nav style={{ flex: 1, padding: "0.75rem 0.75rem", display: "flex", flexDirection: "column", gap: "2px", overflowY: "auto" }}>
+                <nav style={{ flex: 1, padding: "0.75rem", display: "flex", flexDirection: "column", gap: "2px", overflowY: "auto" }}>
                     {navLinks.map(item => (
                         <Link key={item.href} href={item.href}
                             onClick={() => setDrawerOpen(false)}
+                            className="drawer-link"
                             style={{
-                                display: "flex", alignItems: "center",
-                                padding: "10px 12px", borderRadius: "8px",
-                                fontSize: "14px", color: "var(--muted)",
-                                textDecoration: "none", transition: "background 0.15s, color 0.15s",
+                                display: "block", padding: "10px 12px", borderRadius: "8px",
+                                fontSize: "14px", color: "var(--muted)", textDecoration: "none",
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "var(--surface2)"; e.currentTarget.style.color = "var(--text)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--muted)"; }}
-                        >
-                            {item.label}
-                        </Link>
+                        >{item.label}</Link>
                     ))}
                 </nav>
 
-                {/* Drawer footer — theme + sign out */}
-                <div style={{
-                    padding: "0.75rem 0.75rem",
-                    borderTop: "0.5px solid var(--border)",
-                    display: "flex", flexDirection: "column", gap: "6px",
-                }}>
-                    {/* Theme toggle row */}
+                <div style={{ padding: "0.75rem", borderTop: "0.5px solid var(--border)", display: "flex", flexDirection: "column", gap: "6px" }}>
                     <div style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         padding: "8px 12px", borderRadius: "8px",
                         border: "0.5px solid var(--border)", background: "var(--surface)",
                     }}>
-                        <span style={{ fontSize: "13px", color: "var(--muted)" }}>
-                            {theme === "dark" ? "Dark mode" : "Light mode"}
-                        </span>
+                        <span style={{ fontSize: "13px", color: "var(--muted)" }}>{theme === "dark" ? "Dark mode" : "Light mode"}</span>
                         <ThemeToggle theme={theme} toggle={toggle} />
                     </div>
-
                     {session && (
                         <button
                             onClick={() => { setDrawerOpen(false); signOut({ callbackUrl: "/" }); }}
                             style={{
                                 width: "100%", padding: "10px 12px", borderRadius: "8px",
-                                fontSize: "13px", color: "var(--muted)",
-                                background: "transparent",
-                                border: "0.5px solid var(--border)",
-                                cursor: "pointer", textAlign: "left",
-                                transition: "background 0.15s",
+                                fontSize: "13px", color: "var(--muted)", background: "transparent",
+                                border: "0.5px solid var(--border)", cursor: "pointer", textAlign: "left",
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = "var(--surface2)"}
-                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                        >
-                            Sign out
-                        </button>
+                        >Sign out</button>
                     )}
                 </div>
             </div>

@@ -8,7 +8,7 @@ const sections = [
     { title: "Intellectual property", body: "Code and content you create remains yours. By posting on SancoDevs, you grant us a licence to display it within the platform. We do not claim ownership of your work." },
     { title: "Termination", body: "We reserve the right to suspend or delete accounts that violate these terms. You may delete your account at any time." },
     { title: "Limitation of liability", body: "SancoDevs is provided as-is. We are not liable for any damages arising from your use of the platform. The platform may be unavailable from time to time due to maintenance or technical issues." },
-    { title: "Contact", body: "For questions about these terms, contact legal@sancodevs.com." },
+    { title: "Contact", body: "For questions about these terms, contact sanansari0305@gmail.com." },
 ];
 
 export default function TermsPage() {

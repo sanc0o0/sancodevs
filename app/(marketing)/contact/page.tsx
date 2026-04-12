@@ -82,8 +82,8 @@ export default function ContactPage() {
 
                 <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "8px" }}>
                     {[
-                        { label: "General", value: "hello@sancodevs.com" },
-                        { label: "Support", value: "support@sancodevs.com" },
+                        { label: "General", value: "sanansari0305@gmail.com" },
+                        { label: "Support", value: "sanansari0305@gmail.com" },
                     ].map(c => (
                         <div key={c.label} style={{
                             display: "flex", justifyContent: "space-between", alignItems: "center",

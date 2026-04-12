@@ -49,6 +49,11 @@ body {
   border-color: var(--accent) !important;
   color: var(--text) !important;
 }
+
+.dropdown-item { transition: background 0.1s, color 0.1s; }
+.dropdown-item:hover { background: var(--surface2) !important; color: var(--text) !important; }
+.drawer-link { transition: background 0.15s, color 0.15s; }
+.drawer-link:hover { background: var(--surface2) !important; color: var(--text) !important; }
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }

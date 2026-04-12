@@ -32,7 +32,7 @@ export default function CareersPage() {
                             </div>
 
                             <a
-                            href="mailto:careers@sancodevs.com"
+                                href="mailto:sanansari0305@gmail.com"
                             className="card-hover"
                             style={{
                                 padding: "7px 14px", borderRadius: "7px", fontSize: "12px",
@@ -58,7 +58,7 @@ export default function CareersPage() {
                 </p>
 
                 <a
-                href="mailto:hello@sancodevs.com"
+                        href="mailto:sanansari0305@gmail.com"
                 style={{
                     display: "inline-block", padding: "8px 16px", borderRadius: "7px",
                     fontSize: "13px", background: "var(--accent)", color: "var(--bg)",
