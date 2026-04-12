@@ -27,3 +27,29 @@ body {
   font-family: var(--font-body);
   transition: background 0.2s, color 0.2s;
 }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hidden-mobile { display: none !important; }
+  .show-mobile   { display: flex !important; }
+}
+
+@media (min-width: 769px) {
+  .show-mobile { display: none !important; }
+}
