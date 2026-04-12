@@ -42,6 +42,13 @@ body {
   color: var(--text) !important;
 }
 
+.card-hover {
+  transition: border-color 0.15s, color 0.15s;
+}
+.card-hover:hover {
+  border-color: var(--accent) !important;
+  color: var(--text) !important;
+}
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
