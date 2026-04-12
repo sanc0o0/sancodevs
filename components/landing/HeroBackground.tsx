@@ -20,12 +20,11 @@ export default function HeroBackground() {
 
     return (
         <>
-            <section style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "clamp(4rem, 10vw, 8rem) 1.5rem", minHeight: "90vh", overflow: "hidden" }}>
+            <section style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "clamp(4rem, 10vw, 8rem) 1.5rem", minHeight: "90vh", overflow: "hidden", background: isDark ? "#0a0a0a" : "#ebebeb" }}>
                 <MeshGradient
                     className="absolute inset-0 w-full h-full"
                     colors={isDark ? darkColors : lightColors}
                     speed={0.4}
-                    backgroundColor={isDark ? "#0a0a0a" : "#ebebeb"}
                 />
                 <div style={{
                     position: "absolute", inset: 0, pointerEvents: "none",
