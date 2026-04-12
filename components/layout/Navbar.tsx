@@ -34,7 +34,7 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                 background: "var(--bg)", flexShrink: 0,
                 position: "relative", zIndex: 50,
             }}>
-                {/* Left: hamburger (mobile only) + logo */}
+                {/* Left: hamburger (mobile only) + logo
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     {!minimal && (
                         <button 
@@ -55,8 +55,8 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                             </svg>
                         </button>
                     )}
+                </div> */}
                     <Link href="/" style={{ textDecoration: "none" }}><Logo /></Link>
-                </div>
 
                 {/* Right */}
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
