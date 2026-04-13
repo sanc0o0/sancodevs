@@ -5,9 +5,13 @@ import { useTheme } from "@/lib/theme";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 
-interface NavbarProps { minimal?: boolean; }
+interface NavbarProps { 
+    minimal?: boolean;
+    hideAuth?: boolean;
 
-export default function Navbar({ minimal = false }: NavbarProps) {
+}
+
+export default function Navbar({ minimal = false, hideAuth = false }: NavbarProps) {
     const { theme, toggle } = useTheme();
     const { data: session } = useSession();
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -34,29 +38,7 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                 background: "var(--bg)", flexShrink: 0,
                 position: "relative", zIndex: 50,
             }}>
-                {/* Left: hamburger (mobile only) + logo
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    {!minimal && (
-                        <button 
-                            onClick={() => setDrawerOpen(true)} 
-                            className="show-mobile" 
-                            title="Open navigation menu"
-                            aria-label="Open navigation menu"
-                            style={{
-                            width: "34px", height: "34px", borderRadius: "8px",
-                            border: "0.5px solid var(--border)", background: "transparent",
-                            color: "var(--text)", cursor: "pointer",
-                            display: "none", alignItems: "center", justifyContent: "center",
-                        }}>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <line x1="3" y1="6" x2="21" y2="6" />
-                                <line x1="3" y1="12" x2="21" y2="12" />
-                                <line x1="3" y1="18" x2="21" y2="18" />
-                            </svg>
-                        </button>
-                    )}
-                </div> */}
-                    <Link href="/" style={{ textDecoration: "none" }}><Logo /></Link>
+                <Link href="/" style={{ textDecoration: "none" }}><Logo /></Link>
 
                 {/* Right */}
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -66,7 +48,7 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                     </div>
 
                     {/* NOT logged in — show auth buttons on desktop */}
-                    {!minimal && !session && (
+                    {!minimal && !session && !hideAuth && (
                         <div className="hidden-mobile" style={{ display: "flex", gap: "6px" }}>
                             <Link href="/login" style={{
                                 padding: "6px 14px", borderRadius: "7px", fontSize: "13px",
@@ -144,17 +126,17 @@ export default function Navbar({ minimal = false }: NavbarProps) {
 
                     {/* Mobile hamburger */}
                     {!minimal && (
-                        <button 
-                            onClick={() => setDrawerOpen(true)} 
-                            className="show-mobile" 
+                        <button
+                            onClick={() => setDrawerOpen(true)}
+                            className="show-mobile"
                             title="Open navigation menu"
                             aria-label="Open navigation menu"
                             style={{
-                            width: "34px", height: "34px", borderRadius: "8px",
-                            border: "0.5px solid var(--border)", background: "transparent",
-                            color: "var(--text)", cursor: "pointer",
-                            display: "none", alignItems: "center", justifyContent: "center",
-                        }}>
+                                width: "34px", height: "34px", borderRadius: "8px",
+                                border: "0.5px solid var(--border)", background: "transparent",
+                                color: "var(--text)", cursor: "pointer",
+                                display: "none", alignItems: "center", justifyContent: "center",
+                            }}>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <line x1="3" y1="6" x2="21" y2="6" />
                                 <line x1="3" y1="12" x2="21" y2="12" />
@@ -188,16 +170,16 @@ export default function Navbar({ minimal = false }: NavbarProps) {
                     borderBottom: "0.5px solid var(--border)", flexShrink: 0,
                 }}>
                     <Logo />
-                    <button 
-                        onClick={() => setDrawerOpen(false)} 
+                    <button
+                        onClick={() => setDrawerOpen(false)}
                         title="Close navigation menu"
                         aria-label="Close navigation menu"
                         style={{
-                        width: "32px", height: "32px", borderRadius: "8px",
-                        border: "0.5px solid var(--border)", background: "transparent",
-                        color: "var(--text)", cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
+                            width: "32px", height: "32px", borderRadius: "8px",
+                            border: "0.5px solid var(--border)", background: "transparent",
+                            color: "var(--text)", cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                         </svg>

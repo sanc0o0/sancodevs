@@ -6,7 +6,7 @@ import HeroBackground from "@/components/landing/HeroBackground";
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-      <Navbar />
+      <Navbar hideAuth/>
       <HeroBackground />
       <Footer />
     </div>

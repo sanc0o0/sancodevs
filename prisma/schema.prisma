@@ -133,3 +133,12 @@ model UserProgress {
 
   @@unique([userId, pathId, moduleIndex])
 }
+
+model ModuleContent {
+  id          String   @id @default(uuid())
+  pathId      String
+  moduleIndex Int
+  sections    Json
+  
+  @@unique([pathId, moduleIndex])
+}
