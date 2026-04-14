@@ -110,7 +110,11 @@ export default function NewProjectPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                         <div>
                             <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Difficulty *</label>
-                            <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
+                            <select 
+                                id="difficulty-select"
+                                title="Project difficulty"
+                                aria-label="Project difficulty"
+                                value={difficulty} onChange={e => setDifficulty(e.target.value)}
                                 style={{ ...inputStyle, cursor: "pointer" }}
                                 onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                                 onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
@@ -120,8 +124,13 @@ export default function NewProjectPage() {
                         </div>
                         {type === "team" && (
                             <div>
-                                <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Max team size *</label>
-                                <select value={maxMembers} onChange={e => setMaxMembers(e.target.value)}
+                                <label 
+                                    style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Max team size *</label>
+                                <select 
+                                    id="team-seize-select"
+                                    title="Maximum team size"
+                                    aria-label="Maximum team size" 
+                                    value={maxMembers} onChange={e => setMaxMembers(e.target.value)}
                                     style={{ ...inputStyle, cursor: "pointer" }}
                                     onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                                     onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}

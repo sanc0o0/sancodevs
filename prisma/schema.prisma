@@ -22,6 +22,7 @@ model User {
   role          String    @default("USER")
   createdAt     DateTime  @default(now())
 
+  activity UserActivity? @relation  
   teams               TeamMember[]
   accounts            Account[]
   sessions            Session[]
@@ -37,12 +38,17 @@ model Project {
   description String
   createdBy   String
   status      String   @default("OPEN")
+  difficulty  String   @default("Beginner")
+  techStack   String[] @default([])
+  lookingFor  String?
+  type        String   @default("team")
   createdAt   DateTime @default(now())
 
   tasks      Task[]
   teams      TeamMember[]
   applicants ProjectApplication[]
 }
+
 model ProjectApplication {
   id        String   @id @default(uuid())
   projectId String
@@ -178,6 +184,14 @@ model Notification {
   href      String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model UserActivity {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  lastSeenProjectsAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
 }

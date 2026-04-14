@@ -155,8 +155,16 @@ export default function CareerApplyPage() {
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                         <div>
-                            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Role applying for *</label>
-                            <select value={role} onChange={e => setRole(e.target.value)} style={selectStyle}
+                            <label
+                                htmlFor="role-select" 
+                                style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Role applying for *</label>
+                            <select
+                                id="role-select"
+                                title="Role applying for" 
+                                aria-label="Role applying for" 
+                                value={role} 
+                                onChange={e => setRole(e.target.value)} 
+                                className="form-select"
                                 onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                                 onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
                             >
@@ -164,8 +172,16 @@ export default function CareerApplyPage() {
                             </select>
                         </div>
                         <div>
-                            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Years of experience *</label>
-                            <select value={experience} onChange={e => setExperience(e.target.value)} style={selectStyle}
+                            <label 
+                                htmlFor="experience-select"
+                                style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Years of experience *</label>
+                            <select 
+                                id="experience-select"
+                                title="Years od experience"
+                                aria-label="Years od experience"
+                                className="form-select"
+                                value={experience}  
+                                onChange={e => setExperience(e.target.value)}   
                                 onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                                 onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
                             >
