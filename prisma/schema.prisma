@@ -22,12 +22,13 @@ model User {
   role          String    @default("USER")
   createdAt     DateTime  @default(now())
 
-  applications Application[]
-  teams        TeamMember[]
-  accounts     Account[]
-  sessions     Session[]
-  onboarding   UserOnboarding?
-  progress     UserProgress[]
+  teams               TeamMember[]
+  accounts            Account[]
+  sessions            Session[]
+  onboarding          UserOnboarding?
+  progress            UserProgress[]
+  notifications       Notification[]
+  projectApplications ProjectApplication[]
 }
 
 model Project {
@@ -38,20 +39,24 @@ model Project {
   status      String   @default("OPEN")
   createdAt   DateTime @default(now())
 
-  applications Application[]
-  tasks        Task[]
-  teams        TeamMember[]
+  tasks      Task[]
+  teams      TeamMember[]
+  applicants ProjectApplication[]
 }
-
-model Application {
+model ProjectApplication {
   id        String   @id @default(uuid())
-  userId    String
   projectId String
+  userId    String
+  message   String?
   status    String   @default("PENDING")
+  createdAt DateTime @default(now())
 
-  user    User    @relation(fields: [userId], references: [id])
   project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
 }
+
 
 model TeamMember {
   id        String @id @default(uuid())
@@ -141,4 +146,38 @@ model ModuleContent {
   sections    Json
   
   @@unique([pathId, moduleIndex])
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model JobApplication {
+  id         String   @id @default(uuid())
+  name       String
+  email      String
+  role       String
+  experience String
+  why        String
+  github     String?
+  portfolio  String?
+  resumeUrl  String?
+  agreed     Boolean
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  href      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
 }

@@ -40,7 +40,7 @@ export default function HeroBackground() {
             <section style={{
                 position: "relative", display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center", textAlign: "center",
-                padding: "clamp(5rem, 12vw, 4rem) 1.5rem clamp(4rem, 8vw, 7rem)",
+                padding: "clamp(5rem, 12vw, 4rem) 1.5rem clamp(4rem, 8vw, 5rem)",
                 minHeight: "92vh", overflow: "hidden",
                 background: isDark ? "#0a0a0a" : "#ebebeb" 
             }}>

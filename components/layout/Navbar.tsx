@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTheme } from "@/lib/theme";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
+import NotificationBell from "./NotificationBell";
 
 interface NavbarProps { 
     minimal?: boolean;
@@ -33,7 +34,7 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
         <>
             <nav style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "0 1.25rem", height: "54px",
+                padding: "0 1.25rem", height: "60px",
                 borderBottom: "0.5px solid var(--border)",
                 background: "var(--bg)", flexShrink: 0,
                 position: "relative", zIndex: 50,
@@ -65,7 +66,8 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
 
                     {/* Logged in — avatar + dropdown only (no separate nav links) */}
                     {!minimal && session && (
-                        <div className="hidden-mobile" style={{ position: "relative" }}>
+                        <div className="hidden-mobile" style={{  display: "flex", alignItems: "center", gap: "8px" }}>
+                            <NotificationBell/>
                             <button onClick={() => setDropdownOpen(o => !o)} style={{
                                 width: "32px", height: "32px", borderRadius: "50%",
                                 border: "0.5px solid var(--border)", background: "var(--surface2)",

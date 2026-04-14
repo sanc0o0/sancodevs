@@ -54,6 +54,12 @@ body {
 .dropdown-item:hover { background: var(--surface2) !important; color: var(--text) !important; }
 .drawer-link { transition: background 0.15s, color 0.15s; }
 .drawer-link:hover { background: var(--surface2) !important; color: var(--text) !important; }
+
+@media (max-width: 768px) {
+  .profile-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
