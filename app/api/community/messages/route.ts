@@ -5,15 +5,26 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return NextResponse.json([]);
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const groupId = searchParams.get("groupId");
     if (!groupId) return NextResponse.json([]);
 
+    // CRITICAL: verify membership before returning ANY messages
+    const member = await prisma.communityMember.findUnique({
+        where: {
+            groupId_userId: { groupId, userId: session.user.id },
+        },
+    });
+
+    if (!member || member.status !== "ACTIVE") {
+        return NextResponse.json({ error: "Not a member of this group." }, { status: 403 });
+    }
+
     const messages = await prisma.communityMessage.findMany({
         where: { groupId },
-        include: { 
+        include: {
             user: { select: { id: true, name: true, image: true } },
             receipts: { select: { userId: true } },
             reactions: { select: { userId: true, emoji: true } },
@@ -22,7 +33,6 @@ export async function GET(req: Request) {
         take: 100,
     });
 
-    // Transform reactions to grouped format
     return NextResponse.json(messages.map(m => ({
         ...m,
         createdAt: m.createdAt.toISOString(),

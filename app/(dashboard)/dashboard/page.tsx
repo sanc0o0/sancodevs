@@ -26,14 +26,24 @@ export default async function DashboardPage() {
     const nextModuleIndex = completedCount < totalModules ? completedCount : null;
 
     return (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(0,1fr)", gap: "1.5rem", maxWidth: "1100px", alignItems: "start" }}>
+        <div
+            style={{
+                display: "grid",
+                gridTemplateColumns: "1fr",
+                gap: "1.25rem",
+                maxWidth: "1100px",
+                margin: "0 auto",
+                padding: "1rem",
+            }}
+            className="dashboard-grid"
+        >
 
             {/* LEFT — existing content */}
-            <div style={{ maxWidth: "800px" }}>
+            <div style={{ maxWidth: "100%" }}>
                 {/* Header */}
                 <div style={{ marginBottom: "2rem" }}>
                     <div style={{ width: "28px", height: "2px", background: "var(--accent)", marginBottom: "1rem" }} />
-                    <h1 style={{ fontSize: "21px", fontWeight: 500, color: "var(--text)", marginBottom: "4px" }}>
+                    <h1 style={{ fontSize: "clamp(18px, 2vw, 21px)", fontWeight: 500, color: "var(--text)", marginBottom: "4px" }}>
                         Welcome back, {session.user.name?.split(" ")[0]}
                     </h1>
                     <p style={{ fontSize: "13px", color: "var(--muted)" }}>
@@ -46,7 +56,7 @@ export default async function DashboardPage() {
                 {/* Progress card */}
                 <div style={{
                     border: "0.5px solid var(--border)", borderRadius: "11px",
-                    background: "var(--surface)", padding: "1.5rem",
+                    background: "var(--surface)", padding: "clamp(1rem, 2vw, 1.5rem)",
                     marginBottom: "1.25rem",
                 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
@@ -161,7 +171,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* RIGHT — activity */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", width: "100%" }}>
                 <div style={{ border: "0.5px solid var(--border)", borderRadius: "11px", background: "var(--surface)", overflow: "hidden" }}>
                     <div style={{ padding: "0.875rem 1.25rem", borderBottom: "0.5px solid var(--border)" }}>
                         <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>Quick actions</p>

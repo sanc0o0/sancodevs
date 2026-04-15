@@ -27,7 +27,9 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
 
     if (!group) notFound();
 
-    const isMember = group.members.some(m => m.userId === session.user.id);
+    const isMember = group.members.some(
+        m => m.userId === session.user.id && m.status === "ACTIVE"
+    );
     if (!isMember) redirect("/community");
 
     return (

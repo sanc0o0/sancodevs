@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const {
-        title, description, difficulty, maxMembers, techStack, lookingFor, type,
+        title, description, difficulty, maxMembers, techStack, lookingFor,
         projectUrl, repoUrl, createCommunity, communityName,
     } = await req.json();
 
@@ -44,6 +44,10 @@ export async function POST(req: Request) {
         }
     }
 
+    const normalizedTechStack = (techStack ?? []).map((t: string) =>
+        t.toLowerCase().trim()
+    );
+
     const project = await prisma.project.create({
         data: {
             title,
@@ -51,34 +55,56 @@ export async function POST(req: Request) {
             createdBy: session.user.id,
             status: "OPEN",
             difficulty,
-            techStack: techStack ?? [],
+            techStack: normalizedTechStack,
             lookingFor,
-            type,
             maxMembers,
             projectUrl,
             repoUrl,
         },
     });
 
-    // After creating the project, notify matching users
-    const allPrefs = await prisma.userPreferences.findMany({
-        where: {
-            prefTechs: { hasSome: techStack ?? [] },
-            userId: { not: session.user.id },
-        },
-        select: { userId: true },
-    });
-
-    for (const pref of allPrefs) {
-        await prisma.notification.create({
-            data: {
-                userId: pref.userId,
-                title: `New project matches your interests`,
-                body: `"${title}" uses ${techStack?.slice(0, 3).join(", ")} and more.`,
-                href: `/projects/${project.id}`,
+  
+    // Only notify if project has techStack
+    if (normalizedTechStack.length > 0) {
+        // Step 1: Find users with overlapping preferences
+        const matchingPrefs = await prisma.userPreferences.findMany({
+            where: {
+                userId: { not: session.user.id },
+                prefTechs: { hasSome: normalizedTechStack },
+            },
+            select: {
+                userId: true,
+                prefTechs: true,
             },
         });
+
+        // Step 2: Safety check (handles any bad/unnormalized DB data)
+        const trulyMatching = matchingPrefs.filter(pref =>
+            pref.prefTechs.some(t =>
+                normalizedTechStack.includes(t.toLowerCase().trim())
+            )
+        );
+
+        // Step 3: Create notifications (only for real matches)
+        if (trulyMatching.length > 0) {
+            await prisma.notification.createMany({
+                data: trulyMatching.map(pref => {
+                    const matchedTechs = pref.prefTechs.filter(t =>
+                        normalizedTechStack.includes(t.toLowerCase().trim())
+                    );
+
+                    return {
+                        userId: pref.userId,
+                        title: "New project matches your interests",
+                        body: `"${title}" uses ${matchedTechs.slice(0, 2).join(", ")} — check it out.`,
+                        href: `/projects/${project.id}`,
+                    };
+                }),
+            });
+        }
     }
+
+   
 
     // Create community group if requested
     if (createCommunity) {
