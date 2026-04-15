@@ -60,7 +60,7 @@ export default function ProjectStatusControl({ projectId, currentStatus }: Props
                         style={{ position: "fixed", inset: 0, zIndex: 40 }}
                     />
                     <div style={{
-                        position: "absolute", right: 0, bottom: "calc(100% + 6px)",
+                        position: "absolute", right: 0, top: "calc(100% + 6px)",
                         width: "160px", borderRadius: "9px",
                         border: "0.5px solid var(--border)", background: "var(--surface)",
                         zIndex: 50, overflow: "hidden",

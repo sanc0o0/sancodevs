@@ -30,6 +30,10 @@ model User {
   progress            UserProgress[]
   notifications       Notification[]
   projectApplications ProjectApplication[]
+  communityGroups     CommunityGroup[]
+  communityMembers    CommunityMember[]
+  communityMessages   CommunityMessage[]
+  messageReceipts     MessageReceipt[]
 }
 
 model Project {
@@ -194,4 +198,54 @@ model UserActivity {
   lastSeenProjectsAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model CommunityGroup {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  members  CommunityMember[]
+  messages CommunityMessage[]
+  user     User @relation(fields: [createdBy], references: [id])
+}
+
+model CommunityMember {
+  id        String   @id @default(uuid())
+  groupId   String
+  userId    String
+  role      String   @default("MEMBER")
+  joinedAt  DateTime @default(now())
+
+  group CommunityGroup @relation(fields: [groupId], references: [id])
+  user  User           @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+model CommunityMessage {
+  id        String   @id @default(uuid())
+  groupId   String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  receipts  MessageReceipt[]
+
+  group CommunityGroup @relation(fields: [groupId], references: [id])
+  user  User           @relation(fields: [userId], references: [id])
+}
+
+model MessageReceipt {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  seenAt    DateTime @default(now())
+
+  message CommunityMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
 }

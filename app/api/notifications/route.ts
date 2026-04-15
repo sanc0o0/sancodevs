@@ -7,6 +7,11 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json([]);
 
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await prisma.notification.deleteMany({
+        where: { userId: session.user.id, read: true, createdAt: { lt: cutoff } },
+    }).catch(() => { });
+
     const notifications = await prisma.notification.findMany({
         where: { userId: session.user.id },
         orderBy: { createdAt: "desc" },

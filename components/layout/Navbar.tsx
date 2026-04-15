@@ -23,7 +23,9 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
             { label: "Dashboard", href: "/dashboard" },
             { label: "Learn", href: "/learn" },
             { label: "Projects", href: "/projects" },
+            { label: "Community", href: "/community" },
             { label: "Profile", href: "/profile" },
+            { label: "Settings", href: "/settings" },
         ]
         : [
             { label: "Sign in", href: "/login" },
@@ -98,7 +100,9 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
                                             { label: "Dashboard", href: "/dashboard" },
                                             { label: "Learn", href: "/learn" },
                                             { label: "Projects", href: "/projects" },
+                                            { label: "Community", href: "/community" },
                                             { label: "Profile", href: "/profile" },
+                                            { label: "Settings", href: "/settings" },
                                         ].map(item => (
                                             <Link key={item.href} href={item.href}
                                                 onClick={() => setDropdownOpen(false)}
@@ -116,7 +120,7 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
                                             className="dropdown-item"
                                             style={{
                                                 display: "block", width: "100%", textAlign: "left",
-                                                padding: "9px 14px", fontSize: "13px", color: "var(--muted)",
+                                                padding: "9px 14px", fontSize: "13px", color: "#e24b4a",
                                                 background: "transparent", border: "none", cursor: "pointer",
                                             }}
                                         >Sign out</button>

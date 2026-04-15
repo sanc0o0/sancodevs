@@ -28,6 +28,35 @@ body {
   transition: background 0.2s, color 0.2s;
 }
 
+.btn-action {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  border: 0.5px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.btn-action:hover { opacity: 0.85; }
+.btn-action:active { transform: scale(0.97); }
+
+.btn-ghost {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+  border: 0.5px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
+.btn-ghost:hover { background: var(--surface2); color: var(--text); }
+.btn-ghost:active { transform: scale(0.97); }
+
 .card-hover {
   transition: border-color 0.15s;
 }
@@ -131,4 +160,31 @@ body {
 
 @media (min-width: 769px) {
   .show-mobile { display: none !important; }
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr !important; }
+  .learn-grid { grid-template-columns: 1fr !important; }
+  .project-grid { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 768px) {
+  .project-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .profile-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .community-layout {
+    height: auto !important;
+  }
+  /* Fix text overflow in chat */
+  .chat-bubble {
+    max-width: 85% !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
 }

@@ -3,30 +3,71 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+
 const TECH_OPTIONS = [
-    "Next.js", "React", "TypeScript", "Node.js", "PostgreSQL",
-    "Prisma", "Tailwind CSS", "Python", "MongoDB", "Docker",
+    "Next.js", "React", "TypeScript", "JavaScript", "Node.js", "Python",
+    "PostgreSQL", "MongoDB", "MySQL", "Redis", "Docker", "Kubernetes",
+    "GraphQL", "REST APIs", "Tailwind CSS", "Prisma", "Supabase", "Firebase",
+    "Go", "Rust", "Vue.js", "Angular", "Svelte", "SvelteKit", "Remix",
+    "AWS", "Vercel", "Netlify", "GitHub Actions", "Linux", "Nginx",
+    "Socket.io", "WebSockets", "Jest", "Cypress", "Playwright", "Vite",
+    "Electron", "React Native", "Flutter", "Swift", "Kotlin", "Java",
+    "Spring Boot", "Django", "FastAPI", "Express.js", "NestJS", "Hono",
+    "Drizzle ORM", "TypeORM", "Sequelize", "Mongoose", "Three.js", "D3.js",
 ];
 
 const DIFFICULTY = ["Beginner", "Intermediate", "Advanced"];
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div style={{
+            padding: "1.25rem 1.5rem", borderRadius: "10px",
+            border: "0.5px solid var(--border)", background: "var(--surface)",
+        }}>
+            <p style={{
+                fontSize: "11px", color: "var(--muted)",
+                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem",
+            }}>{title}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>{children}</div>
+        </div>
+    );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>
+                {label}
+            </label>
+            {children}
+        </div>
+    );
+}
 
 export default function NewProjectPage() {
     const router = useRouter();
     const [state, setState] = useState<"idle" | "loading" | "error">("idle");
     const [error, setError] = useState("");
     const [title, setTitle] = useState("");
+    const [projectUrl, setProjectUrl] = useState("");
+    const [repoUrl, setRepoUrl] = useState("");
     const [description, setDescription] = useState("");
     const [difficulty, setDifficulty] = useState(DIFFICULTY[0]);
     const [maxMembers, setMaxMembers] = useState("3");
     const [techStack, setTechStack] = useState<string[]>([]);
     const [lookingFor, setLookingFor] = useState("");
     const [type, setType] = useState<"solo" | "team">("team");
+    const [techSearch, setTechSearch] = useState("");
+    const filteredTech = TECH_OPTIONS.filter(t =>
+        t.toLowerCase().includes(techSearch.toLowerCase())
+    );
 
     function toggleTech(tech: string) {
         setTechStack(prev =>
             prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]
         );
     }
+
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -37,7 +78,7 @@ export default function NewProjectPage() {
             const res = await fetch("/api/projects", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title, description, difficulty, maxMembers: parseInt(maxMembers), techStack, lookingFor, type }),
+                body: JSON.stringify({ title, description, difficulty, maxMembers: parseInt(maxMembers), techStack, lookingFor, type, projectUrl, repoUrl }),
             });
             if (res.ok) router.push("/projects?created=true");
             else { const d = await res.json(); setError(d.error ?? "Something went wrong."); setState("idle"); }
@@ -142,7 +183,7 @@ export default function NewProjectPage() {
                     </div>
                 </div>
 
-                {/* Tech stack */}
+                {/* Tech stack
                 <div style={{ padding: "1.25rem 1.5rem", borderRadius: "10px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
                     <p style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>Tech stack *</p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "7px" }}>
@@ -156,7 +197,7 @@ export default function NewProjectPage() {
                             }}>{tech}</button>
                         ))}
                     </div>
-                </div>
+                </div> */}
 
                 {/* Looking for */}
                 {type === "team" && (
@@ -171,6 +212,69 @@ export default function NewProjectPage() {
                         />
                     </div>
                 )}
+                
+                {/* Links */}
+                <div style={{ padding: "1.25rem 1.5rem", borderRadius: "10px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
+                    <p style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>Links</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        <div>
+                            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Project URL (must be live)</label>
+                            <input type="url" value={projectUrl}
+                                placeholder="https://myproject.vercel.app"
+                                onChange={e => setProjectUrl(e.target.value)}
+                                style={inputStyle}
+                                onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
+                                onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Repository URL</label>
+                            <input type="url" value={repoUrl}
+                                placeholder="https://github.com/username/repo"
+                                onChange={e => setRepoUrl(e.target.value)}
+                                style={inputStyle}
+                                onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
+                                onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <Section title="Tech stack *">
+                    <input
+                        className="form-input"
+                        type="text"
+                        placeholder="Search technologies, frameworks, libraries..."
+                        value={techSearch}
+                        onChange={e => setTechSearch(e.target.value)}
+                        style={{ marginBottom: "10px" }}
+                    />
+                    {techStack.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+                            {techStack.map(t => (
+                                <span key={t} style={{
+                                    padding: "4px 10px", borderRadius: "6px", fontSize: "12px",
+                                    background: "var(--surface2)", border: "0.5px solid var(--accent)",
+                                    color: "var(--text)", display: "flex", alignItems: "center", gap: "6px",
+                                }}>
+                                    {t}
+                                    <button onClick={() => toggleTech(t)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: "14px", lineHeight: 1, padding: 0 }}>×</button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxHeight: "200px", overflowY: "auto" }}>
+                        {filteredTech.filter(t => !techStack.includes(t)).map(tech => (
+                            <button key={tech} onClick={() => toggleTech(tech)} style={{
+                                padding: "5px 12px", borderRadius: "6px", fontSize: "12px",
+                                border: "0.5px solid var(--border)", background: "transparent",
+                                color: "var(--muted)", cursor: "pointer", transition: "all 0.15s",
+                            }}
+                                className="card-hover"
+                            >{tech}</button>
+                        ))}
+                    </div>
+                </Section>
 
                 {error && (
                     <p style={{ fontSize: "12px", color: "#e24b4a", padding: "10px 14px", borderRadius: "8px", border: "0.5px solid #e24b4a" }}>
@@ -184,6 +288,8 @@ export default function NewProjectPage() {
                         border: "0.5px solid var(--border)", background: "transparent",
                         color: "var(--muted)", cursor: "pointer",
                     }}>Cancel</button>
+
+                    
                     <button type="submit" disabled={state === "loading"} style={{
                         padding: "9px 22px", borderRadius: "8px", fontSize: "13px",
                         fontWeight: 500, background: "var(--accent)", color: "var(--bg)",

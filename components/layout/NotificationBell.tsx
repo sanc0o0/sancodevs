@@ -51,6 +51,25 @@ export default function NotificationBell() {
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
 
+    useEffect(() => {
+        const fetchAll = async () => {
+            try {
+                const [nRes, pRes] = await Promise.all([
+                    fetch("/api/notifications"),
+                    fetch("/api/projects/seen"),
+                ]);
+                const nData = await nRes.json();
+                const pData = await pRes.json();
+                if (Array.isArray(nData)) setNotifications(nData);
+                setUnseenProjects(pData.unseen ?? 0);
+            } catch { }
+        };
+
+        fetchAll();
+        const interval = setInterval(fetchAll, 10000);
+        return () => clearInterval(interval);
+    }, []);
+
     async function markRead(id: string) {
         await fetch("/api/notifications", {
             method: "PATCH",
@@ -88,7 +107,7 @@ export default function NotificationBell() {
                         background: "#e24b4a", border: "1.5px solid var(--bg)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: "9px", fontWeight: 600, color: "#fff",
-                        lineHeight: 1,
+                        lineHeight: 2,
                     }}>
                         {totalBadge > 9 ? "9+" : totalBadge}
                     </span>
@@ -149,7 +168,15 @@ export default function NotificationBell() {
                             </p>
                         </div>
                     ) : (
-                        <div style={{ maxHeight: "340px", overflowY: "auto" }}>
+                            <div className="notif-scroll"  style={{
+                                maxHeight: "340px", overflowY: "auto",
+                                scrollbarWidth: "none",
+                                msOverflowStyle: "none",
+                            }}>
+                                <style>{`
+                                    .notif-scroll::-webkit-scrollbar { display: none; }
+                                `}</style>
+                                
                             {notifications.map(n => (
                                 <div
                                     key={n.id}

@@ -4,19 +4,8 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-const ROLES = [
-    "Full-stack Developer",
-    "Content Writer",
-    "Community Manager",
-];
-
-const EXPERIENCE_LEVELS = [
-    "Less than 1 year",
-    "1–2 years",
-    "2–4 years",
-    "4+ years",
-];
-
+const ROLES = ["Full-stack Developer", "Content Writer", "Community Manager"];
+const EXPERIENCE_LEVELS = ["Less than 1 year", "1–2 years", "2–4 years", "4+ years"];
 const TERMS = [
     "I am applying in good faith and the information I've provided is accurate.",
     "I understand this is an early-stage startup and roles may be part-time or unpaid initially.",
@@ -24,7 +13,7 @@ const TERMS = [
     "I understand that SancoDevs may contact me at the email address I've provided.",
 ];
 
-export default function CareerApplyPage() {
+export default function CareerApplyForm() {
     const searchParams = useSearchParams();
     const [state, setState] = useState<"idle" | "loading" | "sent" | "error">("idle");
     const [name, setName] = useState("");
@@ -36,17 +25,44 @@ export default function CareerApplyPage() {
     const [portfolio, setPortfolio] = useState("");
     const [agreed, setAgreed] = useState(false);
     const [error, setError] = useState("");
+    const [resumeFile, setResumeFile] = useState<File | null>(null);
+    const [resumeUploading, setResumeUploading] = useState(false);
+    const [resumeUrl, setResumeUrl] = useState("");
+
+    async function handleResumeChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            setError("Resume must be under 5MB."); return;
+        }
+        setResumeFile(file);
+        setResumeUploading(true);
+        setError("");
+        try {
+            const fd = new FormData();
+            fd.append("resume", file);
+            const res = await fetch("/api/upload/resume", { method: "POST", body: fd });
+            const data = await res.json();
+            if (!res.ok) { setError(data.error ?? "Upload failed."); setResumeFile(null); }
+            else setResumeUrl(data.url);
+        } catch {
+            setError("Failed to upload resume.");
+            setResumeFile(null);
+        }
+        setResumeUploading(false);
+    }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError("");
         if (!agreed) { setError("Please agree to the terms to continue."); return; }
+        if (resumeUploading) { setError("Please wait for resume to finish uploading."); return; }
         setState("loading");
         try {
             const res = await fetch("/api/careers/apply", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, role, experience, why, github, portfolio, agreed }),
+                body: JSON.stringify({ name, email, role, experience, why, github, portfolio, agreed, resumeUrl: resumeUrl || null }),
             });
             if (res.ok) setState("sent");
             else { const d = await res.json(); setError(d.error ?? "Something went wrong."); setState("idle"); }
@@ -55,19 +71,6 @@ export default function CareerApplyPage() {
             setState("idle");
         }
     }
-
-    const inputStyle: React.CSSProperties = {
-        width: "100%", padding: "9px 12px", borderRadius: "8px",
-        border: "0.5px solid var(--border)", background: "var(--bg)",
-        color: "var(--text)", fontSize: "13px", outline: "none",
-        transition: "border-color 0.15s", boxSizing: "border-box",
-        fontFamily: "inherit",
-    };
-
-    const selectStyle: React.CSSProperties = {
-        ...inputStyle,
-        cursor: "pointer", appearance: "none",
-    };
 
     if (state === "sent") {
         return (
@@ -84,21 +87,15 @@ export default function CareerApplyPage() {
                         Thank you for applying
                     </h1>
                     <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.75, marginBottom: "1.5rem" }}>
-                        We&apos;ve received your application for <strong style={{ color: "var(--text)" }}>{role}</strong>.
-                        We review every application personally and will reach out to you at{" "}
-                        <strong style={{ color: "var(--text)" }}>{email}  </strong> if there&apos;s a strong fit.
-                        This usually takes up to a week.
-                    </p>
-                    <p style={{ fontSize: "12px", color: "var(--muted)", marginBottom: "1.5rem" }}>
-                        A confirmation email has been sent to your inbox.
+                        We&apos;ve received your application for{" "}
+                        <strong style={{ color: "var(--text)" }}>{role}</strong>.
+                        We&apos;ll reach out at <strong style={{ color: "var(--text)" }}>{email}</strong> if there&apos;s a fit.
                     </p>
                     <Link href="/" style={{
                         display: "inline-block", padding: "9px 20px", borderRadius: "8px",
                         fontSize: "13px", background: "var(--accent)", color: "var(--bg)",
                         textDecoration: "none", fontWeight: 500,
-                    }}>
-                        Back to SancoDevs
-                    </Link>
+                    }}>Back to SancoDevs</Link>
                 </div>
             </div>
         );
@@ -109,7 +106,6 @@ export default function CareerApplyPage() {
             <Link href="/careers" style={{ fontSize: "12px", color: "var(--muted)", textDecoration: "none", display: "block", marginBottom: "2rem" }}>
                 ← Back to careers
             </Link>
-
             <div style={{ width: "24px", height: "2px", background: "var(--accent)", marginBottom: "1rem" }} />
             <h1 style={{ fontSize: "22px", fontWeight: 500, color: "var(--text)", marginBottom: "6px" }}>Apply to SancoDevs</h1>
             <p style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "2rem", lineHeight: 1.6 }}>
@@ -119,167 +115,137 @@ export default function CareerApplyPage() {
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
                 {/* Personal info */}
-                <div style={{
-                    padding: "1.25rem 1.5rem", borderRadius: "10px",
-                    border: "0.5px solid var(--border)", background: "var(--surface)",
-                }}>
-                    <p style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>
-                        Personal info
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {[
-                            { label: "Full name *", type: "text", value: name, setter: setName, placeholder: "Your full name" },
-                            { label: "Email address *", type: "email", value: email, setter: setEmail, placeholder: "you@example.com" },
-                        ].map(f => (
-                            <div key={f.label}>
-                                <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>{f.label}</label>
-                                <input
-                                    type={f.type} value={f.value} required placeholder={f.placeholder}
-                                    onChange={e => f.setter(e.target.value)}
-                                    style={inputStyle}
-                                    onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
-                                    onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <Section title="Personal info">
+                    <Field label="Full name *">
+                        <input className="form-input" type="text" value={name} required placeholder="Your full name" onChange={e => setName(e.target.value)} />
+                    </Field>
+                    <Field label="Email address *">
+                        <input className="form-input" type="email" value={email} required placeholder="you@example.com" onChange={e => setEmail(e.target.value)} />
+                    </Field>
+                </Section>
 
-                {/* Role details */}
-                <div style={{
-                    padding: "1.25rem 1.5rem", borderRadius: "10px",
-                    border: "0.5px solid var(--border)", background: "var(--surface)",
-                }}>
-                    <p style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>
-                        Role & experience
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        <div>
-                            <label
-                                htmlFor="role-select" 
-                                style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Role applying for *</label>
-                            <select
-                                id="role-select"
-                                title="Role applying for" 
-                                aria-label="Role applying for" 
-                                value={role} 
-                                onChange={e => setRole(e.target.value)} 
-                                className="form-select"
-                                onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
-                                onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
-                            >
-                                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label 
-                                htmlFor="experience-select"
-                                style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Years of experience *</label>
-                            <select 
-                                id="experience-select"
-                                title="Years od experience"
-                                aria-label="Years od experience"
-                                className="form-select"
-                                value={experience}  
-                                onChange={e => setExperience(e.target.value)}   
-                                onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
-                                onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
-                            >
-                                {EXPERIENCE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>
-                                Why do you want to join SancoDevs? *
+                {/* Role */}
+                <Section title="Role & experience">
+                    <Field label="Role applying for *">
+                        <select id="role-select" title="Role applying for" aria-label="Role applying for" value={role} onChange={e => setRole(e.target.value)} className="form-select">
+                            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                    </Field>
+                    <Field label="Years of experience *">
+                        <select id="experience-select" title="Years of experience" aria-label="Years of experience" value={experience} onChange={e => setExperience(e.target.value)} className="form-select">
+                            {EXPERIENCE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                    </Field>
+                    <Field label="Why do you want to join SancoDevs? *">
+                        <textarea
+                            className="form-input" value={why} required rows={5}
+                            placeholder="Tell us what excites you about this role..."
+                            onChange={e => setWhy(e.target.value)}
+                            style={{ resize: "vertical" }}
+                        />
+                    </Field>
+                </Section>
+
+                {/* Resume */}
+                <Section title="Resume *">
+                    <div style={{
+                        border: `0.5px dashed ${resumeFile ? "var(--accent)" : "var(--border)"}`,
+                        borderRadius: "8px", padding: "1.25rem",
+                        textAlign: "center", transition: "border-color 0.15s",
+                        background: "var(--bg)",
+                    }}>
+                        {resumeFile ? (
+                            <div>
+                                <p style={{ fontSize: "13px", color: "var(--text)", marginBottom: "4px" }}>
+                                    {resumeUploading ? "Uploading..." : "✓ " + resumeFile.name}
+                                </p>
+                                {!resumeUploading && (
+                                    <button type="button" onClick={() => { setResumeFile(null); setResumeUrl(""); }}
+                                        style={{ fontSize: "11px", color: "var(--muted)", background: "none", border: "none", cursor: "pointer" }}>
+                                        Remove
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <label htmlFor="resume-upload" style={{ cursor: "pointer" }}>
+                                <div style={{ fontSize: "22px", marginBottom: "6px" }}>📄</div>
+                                <p style={{ fontSize: "13px", color: "var(--text)", marginBottom: "3px" }}>
+                                    Click to upload resume
+                                </p>
+                                <p style={{ fontSize: "11px", color: "var(--muted)" }}>PDF or Word · Max 5MB</p>
+                                <input
+                                    id="resume-upload"
+                                    type="file"
+                                    accept=".pdf,.doc,.docx"
+                                    onChange={handleResumeChange}
+                                    style={{ display: "none" }}
+                                />
                             </label>
-                            <textarea
-                                value={why} required rows={5}
-                                placeholder="Tell us what excites you about this role and what you'd bring to the team..."
-                                onChange={e => setWhy(e.target.value)}
-                                style={{ ...inputStyle, resize: "vertical" }}
-                                onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
-                                onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
-                            />
-                        </div>
+                        )}
                     </div>
-                </div>
+                </Section>
 
                 {/* Links */}
-                <div style={{
-                    padding: "1.25rem 1.5rem", borderRadius: "10px",
-                    border: "0.5px solid var(--border)", background: "var(--surface)",
-                }}>
-                    <p style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>
-                        Links <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional but recommended)</span>
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {[
-                            { label: "GitHub profile", value: github, setter: setGithub, placeholder: "https://github.com/username" },
-                            { label: "Portfolio / website", value: portfolio, setter: setPortfolio, placeholder: "https://yoursite.com" },
-                        ].map(f => (
-                            <div key={f.label}>
-                                <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>{f.label}</label>
-                                <input
-                                    type="url" value={f.value} placeholder={f.placeholder}
-                                    onChange={e => f.setter(e.target.value)}
-                                    style={inputStyle}
-                                    onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
-                                    onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <Section title="Links (optional)">
+                    <Field label="GitHub profile">
+                        <input className="form-input" type="url" value={github} placeholder="https://github.com/username" onChange={e => setGithub(e.target.value)} />
+                    </Field>
+                    <Field label="Portfolio / website">
+                        <input className="form-input" type="url" value={portfolio} placeholder="https://yoursite.com" onChange={e => setPortfolio(e.target.value)} />
+                    </Field>
+                </Section>
 
                 {/* Terms */}
-                <div style={{
-                    padding: "1.25rem 1.5rem", borderRadius: "10px",
-                    border: "0.5px solid var(--border)", background: "var(--surface)",
-                }}>
-                    <p style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>
-                        Terms & criteria
-                    </p>
+                <Section title="Terms & criteria">
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "1.25rem" }}>
                         {TERMS.map((term, i) => (
                             <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                                <div style={{
-                                    width: "5px", height: "5px", borderRadius: "50%",
-                                    background: "var(--muted)", marginTop: "7px", flexShrink: 0,
-                                }} />
+                                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--muted)", marginTop: "7px", flexShrink: 0 }} />
                                 <p style={{ fontSize: "12px", color: "var(--muted)", lineHeight: 1.6 }}>{term}</p>
                             </div>
                         ))}
                     </div>
                     <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
-                        <input
-                            type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)}
-                            style={{ marginTop: "2px", flexShrink: 0, cursor: "pointer" }}
-                        />
+                        <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ marginTop: "2px", flexShrink: 0 }} />
                         <span style={{ fontSize: "13px", color: "var(--text)", lineHeight: 1.6 }}>
                             I have read and agree to the above terms and criteria.
                         </span>
                     </label>
-                </div>
+                </Section>
 
                 {error && (
-                    <p style={{ fontSize: "12px", color: "#e24b4a", padding: "10px 14px", borderRadius: "8px", border: "0.5px solid #e24b4a", background: "var(--surface)" }}>
+                    <p style={{ fontSize: "12px", color: "#e24b4a", padding: "10px 14px", borderRadius: "8px", border: "0.5px solid #e24b4a" }}>
                         {error}
                     </p>
                 )}
 
-                <button
-                    type="submit"
-                    disabled={state === "loading"}
-                    style={{
-                        padding: "11px", borderRadius: "8px", fontSize: "14px",
-                        fontWeight: 500, background: "var(--accent)", color: "var(--bg)",
-                        border: "none", cursor: state === "loading" ? "not-allowed" : "pointer",
-                        opacity: state === "loading" ? 0.6 : 1, transition: "opacity 0.15s",
-                    }}
-                >
-                    {state === "loading" ? "Submitting..." : "Submit application"}
+                <button type="submit" disabled={state === "loading" || resumeUploading} style={{
+                    padding: "11px", borderRadius: "8px", fontSize: "14px",
+                    fontWeight: 500, background: "var(--accent)", color: "var(--bg)",
+                    border: "none", cursor: (state === "loading" || resumeUploading) ? "not-allowed" : "pointer",
+                    opacity: (state === "loading" || resumeUploading) ? 0.6 : 1,
+                }}>
+                    {state === "loading" ? "Submitting..." : resumeUploading ? "Uploading resume..." : "Submit application"}
                 </button>
             </form>
+        </div>
+    );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div style={{ padding: "1.25rem 1.5rem", borderRadius: "10px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
+            <p style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>{title}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>{children}</div>
+        </div>
+    );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>{label}</label>
+            {children}
         </div>
     );
 }
