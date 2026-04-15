@@ -87,7 +87,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                 groupId={group.id}
                 initialMessages={group.messages.map(m => ({
                     id: m.id,
-                    content: m.content,
+                    content: m.content?? "",
                     createdAt: m.createdAt.toISOString(),
                     userId: m.userId,
                     user: m.user,
