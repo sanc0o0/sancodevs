@@ -63,7 +63,14 @@ export default async function CommunityPage() {
                                 {g.messages[0] && (
                                     <p style={{ fontSize: "12px", color: "var(--muted)" }}>
                                         <strong style={{ color: "var(--text)", fontWeight: 500 }}>{g.messages[0].user.name}: </strong>
-                                        {g.messages[0].content.slice(0, 60)}{g.messages[0].content.length > 60 ? "..." : ""}
+                                        {g.messages[0]?.content
+                                            ? (
+                                                <>
+                                                    {g.messages[0].content.slice(0, 60)}
+                                                    {g.messages[0].content.length > 60 ? "..." : ""}
+                                                </>
+                                            )
+                                            : "No messages yet!"}
                                     </p>
                                 )}
                                 {!g.messages[0] && (
