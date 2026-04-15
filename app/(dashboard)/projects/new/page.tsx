@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 
 const TECH_OPTIONS = [
     "Next.js", "React", "TypeScript", "JavaScript", "Node.js", "Python",
-    "PostgreSQL", "MongoDB", "MySQL", "Redis", "Docker", "Kubernetes",
-    "GraphQL", "REST APIs", "Tailwind CSS", "Prisma", "Supabase", "Firebase",
-    "Go", "Rust", "Vue.js", "Angular", "Svelte", "SvelteKit", "Remix",
-    "AWS", "Vercel", "Netlify", "GitHub Actions", "Linux", "Nginx",
-    "Socket.io", "WebSockets", "Jest", "Cypress", "Playwright", "Vite",
-    "Electron", "React Native", "Flutter", "Swift", "Kotlin", "Java",
-    "Spring Boot", "Django", "FastAPI", "Express.js", "NestJS", "Hono",
-    "Drizzle ORM", "TypeORM", "Sequelize", "Mongoose", "Three.js", "D3.js",
+    "PostgreSQL", "MongoDB", "MySQL", "SQLite", "Redis", "Docker", "Kubernetes",
+    "GraphQL", "REST APIs", "Tailwind CSS", "Prisma", "Drizzle", "Supabase",
+    "Firebase", "Go", "Rust", "Vue.js", "Angular", "Svelte", "SvelteKit",
+    "Remix", "Astro", "AWS", "GCP", "Azure", "Vercel", "Netlify", "Railway",
+    "GitHub Actions", "Linux", "Nginx", "Socket.io", "WebSockets", "Jest",
+    "Cypress", "Playwright", "Vite", "Webpack", "Electron", "React Native",
+    "Flutter", "Swift", "Kotlin", "Java", "C++", "C#", "PHP", "Ruby",
+    "Spring Boot", "Django", "FastAPI", "Flask", "Express.js", "NestJS",
+    "Hono", "Bun", "Deno", "Three.js", "D3.js", "TensorFlow", "PyTorch",
+    "Pandas", "NumPy", "Scikit-learn", "OpenAI API", "LangChain", "Pinecone",
+    "Stripe", "Twilio", "SendGrid", "Cloudflare", "Terraform", "Ansible",
+
 ];
 
 const DIFFICULTY = ["Beginner", "Intermediate", "Advanced"];
@@ -58,9 +62,18 @@ export default function NewProjectPage() {
     const [lookingFor, setLookingFor] = useState("");
     const [type, setType] = useState<"solo" | "team">("team");
     const [techSearch, setTechSearch] = useState("");
+    const [createCommunity, setCreateCommunity] = useState(true);
+    const [communityName, setCommunityName] = useState("");
     const filteredTech = TECH_OPTIONS.filter(t =>
         t.toLowerCase().includes(techSearch.toLowerCase())
     );
+
+    // Update useEffect to auto-fill community name from project title:
+    useEffect(() => {
+        if (createCommunity && title && !communityName) {
+            setCommunityName(title);
+        }
+    }, [title, createCommunity]);
 
     function toggleTech(tech: string) {
         setTechStack(prev =>
@@ -78,7 +91,14 @@ export default function NewProjectPage() {
             const res = await fetch("/api/projects", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title, description, difficulty, maxMembers: parseInt(maxMembers), techStack, lookingFor, type, projectUrl, repoUrl }),
+                body: JSON.stringify({
+                    title, description, difficulty,
+                    maxMembers: parseInt(maxMembers),
+                    techStack, lookingFor, type,
+                    projectUrl, repoUrl,
+                    createCommunity,
+                    communityName: communityName || title,
+                }),
             });
             if (res.ok) router.push("/projects?created=true");
             else { const d = await res.json(); setError(d.error ?? "Something went wrong."); setState("idle"); }
@@ -183,22 +203,6 @@ export default function NewProjectPage() {
                     </div>
                 </div>
 
-                {/* Tech stack
-                <div style={{ padding: "1.25rem 1.5rem", borderRadius: "10px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
-                    <p style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>Tech stack *</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "7px" }}>
-                        {TECH_OPTIONS.map(tech => (
-                            <button key={tech} type="button" onClick={() => toggleTech(tech)} style={{
-                                padding: "5px 12px", borderRadius: "6px", fontSize: "12px",
-                                border: `0.5px solid ${techStack.includes(tech) ? "var(--accent)" : "var(--border)"}`,
-                                background: techStack.includes(tech) ? "var(--surface2)" : "transparent",
-                                color: techStack.includes(tech) ? "var(--text)" : "var(--muted)",
-                                cursor: "pointer", transition: "all 0.15s",
-                            }}>{tech}</button>
-                        ))}
-                    </div>
-                </div> */}
-
                 {/* Looking for */}
                 {type === "team" && (
                     <div style={{ padding: "1.25rem 1.5rem", borderRadius: "10px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
@@ -274,6 +278,39 @@ export default function NewProjectPage() {
                             >{tech}</button>
                         ))}
                     </div>
+                </Section>
+
+                <Section title="Project community">
+                    <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                        <input
+                            type="checkbox"
+                            checked={createCommunity}
+                            onChange={e => setCreateCommunity(e.target.checked)}
+                            style={{ flexShrink: 0 }}
+                        />
+                        <div>
+                            <p style={{ fontSize: "13px", color: "var(--text)", marginBottom: "2px" }}>
+                                Create a community group for this project
+                            </p>
+                            <p style={{ fontSize: "11px", color: "var(--muted)" }}>
+                                A dedicated chat for the team to collaborate, discuss, and ask questions.
+                            </p>
+                        </div>
+                    </label>
+                    {createCommunity && (
+                        <div style={{ marginTop: "10px" }}>
+                            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>
+                                Community name
+                            </label>
+                            <input
+                                className="form-input"
+                                type="text"
+                                value={communityName || title}
+                                onChange={e => setCommunityName(e.target.value)}
+                                placeholder="Name for the community group"
+                            />
+                        </div>
+                    )}
                 </Section>
 
                 {error && (

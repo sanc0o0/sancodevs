@@ -1,16 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 const TECH_OPTIONS = [
-    "Next.js", "React", "TypeScript", "JavaScript", "Node.js",
-    "Python", "PostgreSQL", "MongoDB", "Docker", "Kubernetes",
-    "GraphQL", "REST APIs", "Tailwind CSS", "Prisma", "Redis",
-    "Go", "Rust", "Vue.js", "Angular", "Svelte",
-    "AWS", "Vercel", "Supabase", "Firebase", "Linux",
-    "Git", "GitHub Actions", "Testing", "WebSockets", "Machine Learning",
+    "Next.js", "React", "TypeScript", "JavaScript", "Node.js", "Python",
+    "PostgreSQL", "MongoDB", "MySQL", "SQLite", "Redis", "Docker", "Kubernetes",
+    "GraphQL", "REST APIs", "Tailwind CSS", "Prisma", "Drizzle", "Supabase",
+    "Firebase", "Go", "Rust", "Vue.js", "Angular", "Svelte", "SvelteKit",
+    "Remix", "Astro", "AWS", "GCP", "Azure", "Vercel", "Netlify", "Railway",
+    "GitHub Actions", "Linux", "Nginx", "Socket.io", "WebSockets", "Jest",
+    "Cypress", "Playwright", "Vite", "Webpack", "Electron", "React Native",
+    "Flutter", "Swift", "Kotlin", "Java", "C++", "C#", "PHP", "Ruby",
+    "Spring Boot", "Django", "FastAPI", "Flask", "Express.js", "NestJS",
+    "Hono", "Bun", "Deno", "Three.js", "D3.js", "TensorFlow", "PyTorch",
+    "Pandas", "NumPy", "Scikit-learn", "OpenAI API", "LangChain", "Pinecone",
+    "Stripe", "Twilio", "SendGrid", "Cloudflare", "Terraform", "Ansible",
 ];
 
 const TOPICS = [
@@ -57,6 +63,16 @@ export default function SettingsClient({ user }: Props) {
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     }
+
+    useEffect(() => {
+        fetch("/api/settings/notifications")
+            .then(r => r.json())
+            .then(d => {
+                setPrefTechs(d.prefTechs ?? []);
+                setPrefTopics(d.prefTopics ?? []);
+            })
+            .catch(() => { });
+    }, []);
 
     async function deleteAccount() {
         if (deleteConfirm !== user.email) { setDeleteError("Email doesn't match."); return; }

@@ -57,10 +57,12 @@ export default function ChatWindow({
             if (!res.ok) return;
             const data: Message[] = await res.json();
             setMessages(data);
+            // Update reactions from server (source of truth)
             setReactions(prev => {
                 const next = { ...prev };
                 data.forEach(m => {
-                    if (!next[m.id]) next[m.id] = m.reactions ?? [];
+                    // Only update if not currently in an optimistic state
+                    next[m.id] = m.reactions ?? [];
                 });
                 return next;
             });

@@ -138,6 +138,27 @@ export default async function ProjectDetailPage({
 
                 {/* Right sidebar */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    
+                    {project.communityGroupId && (
+                        <Link href={`/community/${project.communityGroupId}`} style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            padding: "1rem 1.25rem", borderRadius: "10px",
+                            border: "0.5px solid var(--border)", background: "var(--surface)",
+                            textDecoration: "none",
+                        }}>
+                            <div>
+                                <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>
+                                    Project community
+                                </p>
+                                <p style={{ fontSize: "11px", color: "var(--muted)" }}>
+                                    Open group chat →
+                                </p>
+                            </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                        </Link>
+                    )}
 
                     {/* Join CTA */}
                     {!isOwner && !isTeamMember && (

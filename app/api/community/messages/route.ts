@@ -16,15 +16,23 @@ export async function GET(req: Request) {
         include: { 
             user: { select: { id: true, name: true, image: true } },
             receipts: { select: { userId: true } },
+            reactions: { select: { userId: true, emoji: true } },
         },
         orderBy: { createdAt: "asc" },
         take: 100,
     });
 
+    // Transform reactions to grouped format
     return NextResponse.json(messages.map(m => ({
         ...m,
         createdAt: m.createdAt.toISOString(),
-        reactions: [],
+        reactions: Object.values(
+            m.reactions.reduce((acc, r) => {
+                if (!acc[r.emoji]) acc[r.emoji] = { emoji: r.emoji, userIds: [] };
+                acc[r.emoji].userIds.push(r.userId);
+                return acc;
+            }, {} as Record<string, { emoji: string; userIds: string[] }>)
+        ),
     })));
 }
 
@@ -32,8 +40,10 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { groupId, content } = await req.json();
-    if (!content?.trim()) return NextResponse.json({ error: "Empty." }, { status: 400 });
+    const { groupId, content, mediaUrl, mediaType } = await req.json();
+    if (!content?.trim() && !mediaUrl) {
+        return NextResponse.json({ error: "Empty message." }, { status: 400 });
+    }
 
     const member = await prisma.communityMember.findUnique({
         where: { groupId_userId: { groupId, userId: session.user.id } },
@@ -41,9 +51,22 @@ export async function POST(req: Request) {
     if (!member) return NextResponse.json({ error: "Not a member." }, { status: 403 });
 
     const message = await prisma.communityMessage.create({
-        data: { groupId, userId: session.user.id, content: content.trim() },
-        include: { user: { select: { id: true, name: true, image: true } } },
+        data: {
+            groupId, userId: session.user.id,
+            content: content?.trim() || null,
+            mediaUrl: mediaUrl || null,
+            mediaType: mediaType || null,
+        },
+        include: {
+            user: { select: { id: true, name: true, image: true } },
+            receipts: { select: { userId: true } },
+            reactions: { select: { userId: true, emoji: true } },
+        },
     });
 
-    return NextResponse.json({ ...message, createdAt: message.createdAt.toISOString(), reactions: [] }, { status: 201 });
+    return NextResponse.json({
+        ...message,
+        createdAt: message.createdAt.toISOString(),
+        reactions: [],
+    }, { status: 201 });
 }
