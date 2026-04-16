@@ -22,7 +22,7 @@ model User {
   role          String    @default("USER")
   createdAt     DateTime  @default(now())
 
-  activity UserActivity? @relation  
+  activity            UserActivity?        @relation
   teams               TeamMember[]
   accounts            Account[]
   sessions            Session[]
@@ -37,6 +37,7 @@ model User {
   messageReactions    MessageReaction[]
   preferences         UserPreferences?
   createdProjects     Project[]
+  assignedTasks       ProjectTask[]
 }
 
 model Project {
@@ -51,8 +52,8 @@ model Project {
   domain            String?
   buildGoal         String?
   timeToComplete    String?
-  complexityType    String[]  @default([])
-  featuresIncluded  String[]  @default([])
+  complexityType    String[] @default([])
+  featuresIncluded  String[] @default([])
   collaborationType String   @default("team")
   monetization      String?
   lookingFor        String?
@@ -62,11 +63,12 @@ model Project {
   communityGroupId  String?  @unique
   createdAt         DateTime @default(now())
 
-  tasks             Task[]
-  teams             TeamMember[]
-  applicants        ProjectApplication[]
-  communityGroup    CommunityGroup? @relation(fields: [communityGroupId], references: [id])
-  user              User @relation(fields: [createdBy], references: [id])
+  teams          TeamMember[]
+  milestones     Milestone[]
+  tasks          ProjectTask[]
+  applicants     ProjectApplication[]
+  communityGroup CommunityGroup?      @relation(fields: [communityGroupId], references: [id])
+  user           User                 @relation(fields: [createdBy], references: [id])
 }
 
 model ProjectApplication {
@@ -83,26 +85,13 @@ model ProjectApplication {
   @@unique([projectId, userId])
 }
 
-
 model TeamMember {
   id        String @id @default(uuid())
   userId    String
   projectId String
   role      String
 
-  user User @relation(fields: [userId], references: [id])
-  project Project @relation(fields: [projectId], references: [id])
-}
-
-model Task {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  projectId   String
-  assignedTo  String
-  deadline    DateTime
-  status      String   @default("TODO")
-
+  user    User    @relation(fields: [userId], references: [id])
   project Project @relation(fields: [projectId], references: [id])
 }
 
@@ -150,13 +139,15 @@ model UserOnboarding {
   pathId      String
   completedAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user           User   @relation(fields: [userId], references: [id])
+  readinessScore Float  @default(0)
+  userCategory   String @default("BEGINNER") // BEGINNER | INTERMEDIATE | BUILDER
 }
 
 model UserProgress {
-  id         String   @id @default(uuid())
-  userId     String
-  pathId     String
+  id          String   @id @default(uuid())
+  userId      String
+  pathId      String
   moduleIndex Int
   completedAt DateTime @default(now())
 
@@ -166,11 +157,11 @@ model UserProgress {
 }
 
 model ModuleContent {
-  id          String   @id @default(uuid())
+  id          String @id @default(uuid())
   pathId      String
   moduleIndex Int
   sections    Json
-  
+
   @@unique([pathId, moduleIndex])
 }
 
@@ -209,9 +200,9 @@ model Notification {
 }
 
 model UserActivity {
-  id                  String   @id @default(uuid())
-  userId              String   @unique
-  lastSeenProjectsAt  DateTime @default(now())
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  lastSeenProjectsAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
 }
@@ -226,7 +217,7 @@ model CommunityGroup {
 
   members  CommunityMember[]
   messages CommunityMessage[]
-  user     User @relation(fields: [createdBy], references: [id])
+  user     User               @relation(fields: [createdBy], references: [id])
   project  Project?
 }
 
@@ -264,21 +255,21 @@ model CommunityMessage {
   mediaType String?
   createdAt DateTime @default(now())
 
-  group     CommunityGroup     @relation(fields: [groupId], references: [id])
-  user      User               @relation(fields: [userId], references: [id])
+  group     CommunityGroup    @relation(fields: [groupId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
   receipts  MessageReceipt[]
   reactions MessageReaction[]
 }
 
 model CommunityMember {
-  id        String   @id @default(uuid())
-  groupId   String
-  userId    String
-  role      String   @default("MEMBER")
-  muted     Boolean  @default(false)
-  pinned    Boolean  @default(false)
-  status    String   @default("ACTIVE") // ACTIVE | PENDING | LEFT
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(uuid())
+  groupId  String
+  userId   String
+  role     String   @default("MEMBER")
+  muted    Boolean  @default(false)
+  pinned   Boolean  @default(false)
+  status   String   @default("ACTIVE") // ACTIVE | PENDING | LEFT
+  joinedAt DateTime @default(now())
 
   group CommunityGroup @relation(fields: [groupId], references: [id])
   user  User           @relation(fields: [userId], references: [id])
@@ -293,4 +284,36 @@ model UserPreferences {
   prefTopics String[] @default([])
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model Milestone {
+  id          String    @id @default(uuid())
+  projectId   String
+  title       String
+  description String?
+  dueDate     DateTime?
+  completed   Boolean   @default(false)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   ProjectTask[]
+}
+
+model ProjectTask {
+  id          String    @id @default(uuid())
+  projectId   String
+  milestoneId String?
+  assignedTo  String?
+  title       String
+  description String?
+  status      String    @default("TODO") // TODO | IN_PROGRESS | REVIEW | DONE
+  priority    String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone Milestone? @relation(fields: [milestoneId], references: [id])
+  assignee  User?      @relation(fields: [assignedTo], references: [id])
 }

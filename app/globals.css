@@ -212,3 +212,13 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+
+@media (max-width: 768px) {
+  .show-mobile { display: flex !important; }
+  /* Hide desktop kanban on mobile */
+  .board-desktop { display: none !important; }
+}
+@media (min-width: 769px) {
+  .board-desktop { display: grid !important; }
+  .board-mobile { display: none !important; }
+}

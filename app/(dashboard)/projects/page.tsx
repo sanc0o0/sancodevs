@@ -2,7 +2,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 import ProjectsClient from "./ProjectsClient";
 
 export default async function ProjectsPage() {

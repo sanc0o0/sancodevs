@@ -42,9 +42,27 @@ export default async function ProjectDetailPage({
 
     return (
         <div style={{ maxWidth: "780px" }}>
-            <Link href="/projects" style={{ fontSize: "12px", color: "var(--muted)", textDecoration: "none", display: "block", marginBottom: "2rem" }}>
-                ← Back to projects
-            </Link>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+
+                {/* Left: Back */}
+                <Link
+                    href="/projects"
+                    className="text-xs text-[var(--muted)] hover:text-[var(--text)] no-underline transition-colors"
+                >
+                    ← Back to projects
+                </Link>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2">
+                    <Link
+                        href={`/projects/${project.id}/board`}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)] transition-colors no-underline"
+                    >
+                        View board →
+                    </Link>
+                </div>
+
+            </div>
 
             {/* Header */}
             <div style={{ marginBottom: "2rem" }}>
