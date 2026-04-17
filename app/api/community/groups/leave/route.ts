@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { pusher } from "@/lib/pusher";
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
@@ -25,5 +26,10 @@ export async function POST(req: Request) {
         data: { status: "LEFT" },
     });
 
+    // After updating status to LEFT:
+    await pusher.trigger(`group-${groupId}`, "member:left", {
+        userId: session.user.id,
+        userName: session.user.name,
+    });
     return NextResponse.json({ success: true });
 }

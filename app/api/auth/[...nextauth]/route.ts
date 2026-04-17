@@ -39,7 +39,14 @@ export const authOptions: NextAuthOptions = {
                     user.password
                 );
 
-                return passwordMatch ? user : null;
+                if (!passwordMatch) return null;
+
+                return {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                };
             },
         }),
     ],
@@ -64,7 +71,7 @@ export const authOptions: NextAuthOptions = {
 
         async redirect({ baseUrl }) {
             // After sign in, check if onboarded
-            return `${baseUrl}/api/onboarding/check`;
+            return baseUrl;
         },
     },
 

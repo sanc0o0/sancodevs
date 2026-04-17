@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { pusher } from "@/lib/pusher";
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -33,4 +34,20 @@ export async function PATCH(req: Request) {
     });
 
     return NextResponse.json({ success: true });
+}
+
+// Helper to create + push notification (use this everywhere)
+export async function createNotification({
+    userId, title, body, href,
+}: {
+    userId: string;
+    title: string;
+    body: string;
+    href?: string;
+}) {
+    const notif = await prisma.notification.create({
+        data: { userId, title, body, href: href ?? null },
+    });
+    await pusher.trigger(`user-${userId}`, "notification:new", notif);
+    return notif;
 }

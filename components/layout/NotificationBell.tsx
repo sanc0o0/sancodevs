@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { getPusherClient } from "@/lib/pusher-client";
 import Link from "next/link";
 
 type Notification = {
@@ -14,6 +16,7 @@ type Notification = {
 };
 
 export default function NotificationBell() {
+    const { data: session } = useSession();
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unseenProjects, setUnseenProjects] = useState(0);
@@ -21,18 +24,33 @@ export default function NotificationBell() {
     const pathname = usePathname();
 
     useEffect(() => {
-        fetch("/api/notifications")
-            .then(r => r.json())
-            .then(d => Array.isArray(d) && setNotifications(d))
-            .catch(() => { });
-
-        fetch("/api/projects/seen")
-            .then(r => r.json())
-            .then(d => setUnseenProjects(d.unseen ?? 0))
-            .catch(() => { });
+        // Initial fetch
+        Promise.all([
+            fetch("/api/notifications").then(r => r.json()),
+            fetch("/api/projects/seen").then(r => r.json()),
+        ]).then(([notifs, proj]) => {
+            if (Array.isArray(notifs)) setNotifications(notifs);
+            setUnseenProjects(proj.unseen ?? 0);
+        }).catch(() => { });
     }, []);
 
-    // Mark projects as seen when user visits /projects
+    // Pusher: real-time notifications
+    useEffect(() => {
+        if (!session?.user?.id) return;
+        const pusher = getPusherClient();
+        const channel = pusher.subscribe(`user-${session.user.id}`);
+
+        channel.bind("notification:new", (notif: Notification) => {
+            setNotifications(prev => [notif, ...prev]);
+        });
+
+        return () => {
+            channel.unbind_all();
+            pusher.unsubscribe(`user-${session.user.id}`);
+        };
+    }, [session?.user?.id]);
+
+    // Auto-mark projects seen
     useEffect(() => {
         if (pathname === "/projects") {
             fetch("/api/projects/seen", { method: "POST" })
@@ -43,177 +61,102 @@ export default function NotificationBell() {
 
     useEffect(() => {
         function handleClick(e: MouseEvent) {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
         }
         document.addEventListener("mousedown", handleClick);
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
 
-    useEffect(() => {
-        const fetchAll = async () => {
-            try {
-                const [nRes, pRes] = await Promise.all([
-                    fetch("/api/notifications"),
-                    fetch("/api/projects/seen"),
-                ]);
-                const nData = await nRes.json();
-                const pData = await pRes.json();
-                if (Array.isArray(nData)) setNotifications(nData);
-                setUnseenProjects(pData.unseen ?? 0);
-            } catch { }
-        };
-
-        fetchAll();
-        const interval = setInterval(fetchAll, 10000);
-        return () => clearInterval(interval);
-    }, []);
-
     async function markRead(id: string) {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
         await fetch("/api/notifications", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id }),
         });
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     }
 
-    const unreadNotifications = notifications.filter(n => !n.read).length;
-    const totalBadge = unreadNotifications + unseenProjects;
+    async function markAllRead() {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        await fetch("/api/notifications/read-all", { method: "POST" }).catch(() => { });
+    }
+
+    const unread = notifications.filter(n => !n.read).length;
+    const total = unread + unseenProjects;
 
     return (
-        <div ref={ref} style={{ position: "relative" }}>
+        <div ref={ref} className="relative">
             <button
                 onClick={() => setOpen(o => !o)}
                 aria-label="Notifications"
-                style={{
-                    width: "34px", height: "34px", borderRadius: "8px",
-                    border: "0.5px solid var(--border)", background: "transparent",
-                    color: "var(--text)", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    position: "relative",
-                }}
+                className="w-[34px] h-[34px] rounded-lg border border-[var(--border)] bg-transparent text-[var(--text)] cursor-pointer flex items-center justify-center relative hover:bg-[var(--surface2)] transition-colors"
             >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
-                {totalBadge > 0 && (
-                    <span style={{
-                        position: "absolute", top: "-4px", right: "-4px",
-                        minWidth: "16px", height: "16px",
-                        borderRadius: "20px", padding: "0 4px",
-                        background: "#e24b4a", border: "1.5px solid var(--bg)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "9px", fontWeight: 600, color: "#fff",
-                        lineHeight: 2,
-                    }}>
-                        {totalBadge > 9 ? "9+" : totalBadge}
+                {total > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full px-1 bg-red-500 border-2 border-[var(--bg)] flex items-center justify-center text-[9px] font-semibold text-white leading-none">
+                        {total > 9 ? "9+" : total}
                     </span>
                 )}
             </button>
 
             {open && (
-                <div style={{
-                    position: "absolute", right: 0, top: "calc(100% + 8px)",
-                    width: "300px", borderRadius: "10px",
-                    border: "0.5px solid var(--border)", background: "var(--surface)",
-                    zIndex: 50, overflow: "hidden",
-                    animation: "fadeIn 0.12s ease",
-                }}>
-                    <div style={{
-                        padding: "10px 14px", borderBottom: "0.5px solid var(--border)",
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
-                    }}>
-                        <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)" }}>
-                            Notifications
-                        </p>
-                        {totalBadge > 0 && (
-                            <span style={{ fontSize: "11px", color: "var(--muted)" }}>
-                                {totalBadge} unread
-                            </span>
-                        )}
+                <div className="absolute right-0 top-[calc(100%+8px)] w-[320px] rounded-xl border border-[var(--border)] bg-[var(--surface)] z-50 overflow-hidden shadow-2xl" style={{ animation: "fadeIn 0.12s ease" }}>
+                    <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--border)]">
+                        <p className="text-sm font-medium text-[var(--text)]">Notifications</p>
+                        <div className="flex items-center gap-2">
+                            {unread > 0 && <span className="text-[10px] text-[var(--muted)]">{unread} unread</span>}
+                            {unread > 0 && (
+                                <button onClick={markAllRead} className="text-[10px] text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer underline">
+                                    Mark all read
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    {/* New projects banner */}
                     {unseenProjects > 0 && (
-                        <Link href="/projects" onClick={() => setOpen(false)} style={{
-                            display: "flex", alignItems: "center", gap: "10px",
-                            padding: "10px 14px",
-                            borderBottom: "0.5px solid var(--border)",
-                            background: "var(--surface2)", textDecoration: "none",
-                            transition: "background 0.1s",
-                        }}>
-                            <div style={{
-                                width: "8px", height: "8px", borderRadius: "50%",
-                                background: "#e24b4a", flexShrink: 0,
-                            }} />
+                        <Link href="/projects" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-[var(--border)] bg-[var(--surface2)] no-underline hover:bg-[var(--surface2)] transition-colors">
+                            <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
                             <div>
-                                <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>
-                                    {unseenProjects} new project{unseenProjects > 1 ? "s" : ""} listed
-                                </p>
-                                <p style={{ fontSize: "11px", color: "var(--muted)" }}>
-                                    Tap to browse →
-                                </p>
+                                <p className="text-xs font-medium text-[var(--text)] mb-0.5">{unseenProjects} new project{unseenProjects > 1 ? "s" : ""} listed</p>
+                                <p className="text-[10px] text-[var(--muted)]">Browse projects →</p>
                             </div>
                         </Link>
                     )}
 
-                    {/* Regular notifications */}
-                    {notifications.length === 0 && unseenProjects === 0 ? (
-                        <div style={{ padding: "2rem", textAlign: "center" }}>
-                            <p style={{ fontSize: "13px", color: "var(--muted)" }}>
-                                No notifications yet
-                            </p>
-                        </div>
-                    ) : (
-                            <div className="notif-scroll"  style={{
-                                maxHeight: "340px", overflowY: "auto",
-                                scrollbarWidth: "none",
-                                msOverflowStyle: "none",
-                            }}>
-                                <style>{`
-                                    .notif-scroll::-webkit-scrollbar { display: none; }
-                                `}</style>
-                                
-                            {notifications.map(n => (
+                    <div className="max-h-[360px] overflow-y-auto">
+                        {notifications.length === 0 && unseenProjects === 0 ? (
+                            <div className="py-8 text-center">
+                                <p className="text-sm text-[var(--muted)]">No notifications</p>
+                            </div>
+                        ) : (
+                            notifications.map(n => (
                                 <div
                                     key={n.id}
                                     onClick={() => markRead(n.id)}
-                                    style={{
-                                        padding: "12px 14px",
-                                        borderBottom: "0.5px solid var(--border)",
-                                        background: n.read ? "transparent" : "var(--surface2)",
-                                        cursor: "pointer", transition: "background 0.1s",
-                                    }}
+                                    className={`px-3.5 py-2.5 border-b border-[var(--border)] cursor-pointer transition-colors hover:bg-[var(--surface2)]
+                                        ${n.read ? "bg-transparent" : "bg-[var(--accent)]/5"}`}
                                 >
                                     {n.href ? (
-                                        <Link href={n.href} style={{ textDecoration: "none" }}>
-                                            <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>
-                                                {n.title}
-                                            </p>
-                                            <p style={{ fontSize: "12px", color: "var(--muted)", lineHeight: 1.5 }}>
-                                                {n.body}
-                                            </p>
+                                        <Link href={n.href} onClick={() => setOpen(false)} className="no-underline block">
+                                            <p className={`text-xs mb-0.5 ${n.read ? "text-[var(--text)]" : "text-[var(--text)] font-medium"}`}>{n.title}</p>
+                                            <p className="text-[10px] text-[var(--muted)] leading-relaxed">{n.body}</p>
                                         </Link>
                                     ) : (
                                         <>
-                                            <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>
-                                                {n.title}
-                                            </p>
-                                            <p style={{ fontSize: "12px", color: "var(--muted)", lineHeight: 1.5 }}>
-                                                {n.body}
-                                            </p>
+                                            <p className={`text-xs mb-0.5 ${n.read ? "text-[var(--text)]" : "text-[var(--text)] font-medium"}`}>{n.title}</p>
+                                            <p className="text-[10px] text-[var(--muted)]">{n.body}</p>
                                         </>
                                     )}
-                                    <p style={{ fontSize: "10px", color: "var(--muted)", marginTop: "4px" }}>
-                                        {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                    <p className="text-[10px] text-[var(--muted)] mt-1">
+                                        {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                                     </p>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
         </div>

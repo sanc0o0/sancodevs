@@ -34,7 +34,7 @@ export default async function DashboardLayout({
                 <Sidebar />
 
                 {/* Main content scrolls */}
-                <main style={{
+                <main id="dashboard-main" style={{
                     flex: 1,
                     overflowY: "auto",
                     padding: "2rem",

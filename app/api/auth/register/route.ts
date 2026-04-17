@@ -22,9 +22,19 @@ export async function POST(req: Request) {
         const hashed = await bcrypt.hash(password, 12);
 
         await prisma.user.create({
-            data: { name, email, password: hashed },
-        });
-
+            data: {
+                name,
+                email,
+                password: hashed,
+                accounts: {
+                    create: {
+                        type: "credentials",
+                        provider: "credentials",
+                        providerAccountId: email,
+                    },
+                },
+            },
+          });
         return NextResponse.json({ success: true }, { status: 201 });
     } catch {
         return NextResponse.json({ error: "Internal server error." }, { status: 500 });
