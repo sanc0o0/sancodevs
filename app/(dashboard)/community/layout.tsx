@@ -29,7 +29,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
     return (
         <div
             className="fixed inset-0"
-            style={{ top: "54px" }} // navbar height
+            style={{ top: "60px" }} // navbar height
         >
             {children}
         </div>
