@@ -7,14 +7,22 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { name, description, emails } = await req.json();
+    const { name, description, emails, isPrivate } = await req.json();
     if (!name) return NextResponse.json({ error: "Name is required." }, { status: 400 });
 
     const group = await prisma.communityGroup.create({
         data: {
-            name, description: description || null,
+            name, 
+            description: description || null,
+            isPrivate: isPrivate ?? true,
             createdBy: session.user.id,
-            members: { create: { userId: session.user.id, role: "ADMIN" } },
+            members: { 
+                create: { 
+                    userId: session.user.id, 
+                    role: "ADMIN",
+                    status: "ACTIVE",
+                } 
+            },
         },
     });
 
@@ -28,7 +36,7 @@ export async function POST(req: Request) {
         for (const user of users) {
             if (user.id === session.user.id) continue;
             await prisma.communityMember.create({
-                data: { groupId: group.id, userId: user.id },
+                data: { groupId: group.id, userId: user.id, status: isPrivate ? "PENDING" : "ACTIVE", },
             }).catch(() => { });
 
             await prisma.notification.create({

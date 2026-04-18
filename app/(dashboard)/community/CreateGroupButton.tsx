@@ -1,112 +1,158 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
-export default function CreateGroupButton() {
-    const router = useRouter();
+interface Props {
+    onCreated: (group: {
+        id: string; name: string; description: string | null;
+        isPrivate: boolean; memberCount: number; muted: boolean; pinned: boolean; lastMessage: null;
+    }) => void;
+}
+
+export default function CreateGroupButton({ onCreated }: Props) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [emails, setEmails] = useState("");
+    const [isPrivate, setIsPrivate] = useState(true); // default private
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setError(""); setLoading(true);
+        setError("");
+        setLoading(true);
         try {
             const res = await fetch("/api/community/groups", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    name, description,
+                    name: name.trim(),
+                    description: description.trim() || null,
+                    isPrivate,
                     emails: emails.split(",").map(e => e.trim()).filter(Boolean),
                 }),
             });
             if (res.ok) {
                 const data = await res.json();
-                setOpen(false); setName(""); setDescription(""); setEmails("");
-                router.push(`/community/${data.id}`);
+                onCreated({
+                    id: data.id,
+                    name: data.name,
+                    description: data.description,
+                    isPrivate: data.isPrivate,
+                    memberCount: 1,
+                    muted: false,
+                    pinned: false,
+                    lastMessage: null,
+                });
+                setOpen(false);
+                setName(""); setDescription(""); setEmails(""); setIsPrivate(true);
             } else {
-                const d = await res.json(); setError(d.error ?? "Failed.");
+                const d = await res.json();
+                setError(d.error ?? "Failed to create group.");
             }
-        } catch { setError("Something went wrong."); }
+        } catch {
+            setError("Something went wrong.");
+        }
         setLoading(false);
     }
 
-    if (!open) {
-        return (
-            <button onClick={() => setOpen(true)} style={{
-                padding: "8px 16px", borderRadius: "7px", fontSize: "13px",
-                background: "var(--accent)", color: "var(--bg)",
-                fontWeight: 500, border: "none", cursor: "pointer",
-                display: "inline-flex", alignItems: "center", gap: "6px",
-            }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    return (
+        <>
+            <button
+                onClick={() => setOpen(true)}
+                aria-label="Create new group"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent)] text-[var(--bg)] border-none cursor-pointer hover:opacity-85 transition-opacity"
+            >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
                 New group
             </button>
-        );
-    }
 
-    return (
-        <div style={{
-            position: "fixed", inset: 0, zIndex: 80,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: "1rem",
-        }}>
-            <div style={{
-                width: "100%", maxWidth: "480px", borderRadius: "14px",
-                border: "0.5px solid var(--border)", background: "var(--surface)",
-                padding: "2rem", animation: "fadeUp 0.2s ease",
-            }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                    <h2 style={{ fontSize: "17px", fontWeight: 500, color: "var(--text)" }}>Create a group</h2>
-                    <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "18px" }}>×</button>
-                </div>
-                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {[
-                        { label: "Group name *", value: name, setter: setName, placeholder: "e.g. Next.js builders", type: "text", required: true },
-                        { label: "Description", value: description, setter: setDescription, placeholder: "What's this group about?", type: "text", required: false },
-                    ].map(f => (
-                        <div key={f.label}>
-                            <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>{f.label}</label>
-                            <input
-                                className="form-input" type={f.type} value={f.value} required={f.required}
-                                placeholder={f.placeholder} onChange={e => f.setter(e.target.value)}
-                            />
+            {open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+                    <div
+                        className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-2xl"
+                        style={{ animation: "fadeUp 0.2s ease" }}
+                    >
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+                            <p className="text-sm font-semibold text-[var(--text)]">Create a group</p>
+                            <button
+                                onClick={() => setOpen(false)}
+                                aria-label="Close"
+                                className="text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer text-xl leading-none"
+                            >×</button>
                         </div>
-                    ))}
-                    <div>
-                        <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>
-                            Invite members by email (comma separated)
-                        </label>
-                        <textarea
-                            className="form-input" value={emails} rows={2}
-                            placeholder="friend@example.com, colleague@example.com"
-                            onChange={e => setEmails(e.target.value)}
-                            style={{ resize: "none" }}
-                        />
+
+                        <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-3">
+                            <div>
+                                <label className="text-xs text-[var(--muted)] block mb-1.5">Group name *</label>
+                                <input
+                                    className="form-input text-sm"
+                                    value={name}
+                                    onChange={e => setName(e.target.value)}
+                                    placeholder="e.g. Next.js builders"
+                                    required
+                                    aria-label="Group name"
+                                    autoFocus
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-[var(--muted)] block mb-1.5">Description</label>
+                                <input
+                                    className="form-input text-sm"
+                                    value={description}
+                                    onChange={e => setDescription(e.target.value)}
+                                    placeholder="What's this group about?"
+                                    aria-label="Group description"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-[var(--muted)] block mb-1.5">
+                                    Invite by email <span className="text-[var(--muted)]">(comma separated)</span>
+                                </label>
+                                <textarea
+                                    className="form-input text-sm resize-none"
+                                    rows={2}
+                                    value={emails}
+                                    onChange={e => setEmails(e.target.value)}
+                                    placeholder="friend@example.com, other@example.com"
+                                    aria-label="Invite emails"
+                                />
+                            </div>
+                            <label className="flex items-center gap-2.5 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={isPrivate}
+                                    onChange={e => setIsPrivate(e.target.checked)}
+                                    className="rounded"
+                                />
+                                <span className="text-xs text-[var(--text)]">
+                                    Private — members need admin approval to join
+                                </span>
+                            </label>
+
+                            {error && <p className="text-xs text-red-400">{error}</p>}
+
+                            <div className="flex gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setOpen(false)}
+                                    className="flex-1 py-2.5 rounded-xl text-sm border border-[var(--border)] bg-transparent text-[var(--muted)] cursor-pointer"
+                                >Cancel</button>
+                                <button
+                                    type="submit"
+                                    disabled={loading || !name.trim()}
+                                    className="flex-1 py-2.5 rounded-xl text-sm bg-[var(--accent)] text-[var(--bg)] border-none cursor-pointer font-medium disabled:opacity-50"
+                                >
+                                    {loading ? "Creating..." : "Create"}
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    {error && <p style={{ fontSize: "12px", color: "#e24b4a" }}>{error}</p>}
-                    <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                        <button type="button" onClick={() => setOpen(false)} style={{
-                            flex: 1, padding: "9px", borderRadius: "8px", fontSize: "13px",
-                            border: "0.5px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer",
-                        }}>Cancel</button>
-                        <button type="submit" disabled={loading} style={{
-                            flex: 1, padding: "9px", borderRadius: "8px", fontSize: "13px",
-                            fontWeight: 500, background: "var(--accent)", color: "var(--bg)",
-                            border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1,
-                        }}>
-                            {loading ? "Creating..." : "Create group"}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                </div>
+            )}
+        </>
     );
 }

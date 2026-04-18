@@ -49,6 +49,21 @@ export default function CommunityShell({
     );
     const [showDetails, setShowDetails] = useState(false);
     const [groups, setGroups] = useState(myGroups);
+    const [memberRoles, setMemberRoles] = useState<Record<string, "ADMIN" | "MEMBER">>({});
+
+    // Load role when active group changes
+    useEffect(() => {
+        if (!activeGroupId) return;
+        fetch(`/api/community/groups/${activeGroupId}/members`)
+            .then(r => r.ok ? r.json() : [])
+            .then((members: { userId: string; role: "ADMIN" | "MEMBER" }[]) => {
+                const me = members.find(m => m.userId === currentUserId);
+                if (me) {
+                    setMemberRoles(prev => ({ ...prev, [activeGroupId]: me.role }));
+                }
+            })
+            .catch(() => { });
+    }, [activeGroupId, currentUserId]);
 
     const activeGroup = groups.find(g => g.id === activeGroupId) ?? null;
 
@@ -67,7 +82,18 @@ export default function CommunityShell({
     }
     // In CommunityShell.tsx — replace the return:
     return (
-        <div className="flex w-full h-full overflow-hidden relative">
+        <div
+            style={{
+                position: "fixed",
+                top: "54px",    // navbar height
+                left: "200px",  // sidebar width — 0 on mobile
+                right: 0,
+                bottom: 0,
+                display: "flex",
+                overflow: "hidden",
+            }}
+            className="community-root"
+        >
             {/* Panel 1 — Group list */}
             <div className={`
                 flex-shrink-0 border-r border-[var(--border)] bg-[var(--bg)] flex flex-col
@@ -136,6 +162,7 @@ export default function CommunityShell({
                         <DetailsPane
                             group={activeGroup}
                             currentUserId={currentUserId}
+                            isAdmin={memberRoles[activeGroup.id] === "ADMIN"}
                             onClose={() => setShowDetails(false)}
                             onGroupUpdated={updates => handleGroupUpdated(activeGroup.id, updates)}
                             onGroupLeft={() => handleGroupLeft(activeGroup.id)}

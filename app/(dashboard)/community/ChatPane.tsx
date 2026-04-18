@@ -20,7 +20,7 @@ type TypingUser = { userId: string; userName: string | null };
 
 const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🔥", "👀", "✅"];
 
-interface Group {
+export interface Group {
     id: string;
     name: string;
     description: string | null;
@@ -57,6 +57,7 @@ export default function ChatPane({
     const [uploading, setUploading] = useState(false);
     const [newMsgCount, setNewMsgCount] = useState(0);
     const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
+    const [notAllowed, setNotAllowed] = useState(false);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -139,32 +140,56 @@ export default function ChatPane({
 
     // ── Load messages when group changes ───────────────────────────────────
     useEffect(() => {
-        groupIdRef.current = group.id;
-        setLoading(true);
-        setMsgMap(new Map());
-        setReactions({});
-        setNewMsgCount(0);
-        setFirstUnreadId(null);
-        sentIdsRef.current.clear();
-        initialLoadedRef.current = false;
+        let cancelled = false;
 
-        fetch(`/api/community/messages?groupId=${group.id}`)
-            .then(r => r.json())
-            .then((data: Message[]) => {
-                if (groupIdRef.current !== group.id) return; // stale
+        async function loadMessages() {
+            setLoading(true);
+
+            try {
+                const res = await fetch(`/api/community/messages?groupId=${group.id}`);
+
+                // ❗ HANDLE 403
+                if (res.status === 403) {
+                    setNotAllowed(true);
+                    setMsgMap(new Map());
+                    setReactions({});
+                    setLoading(false);
+                    return;
+                }
+
+                setNotAllowed(false);
+
+                const data: Message[] = await res.json();
+
+                if (cancelled) return;
+
                 const map = new Map<string, Message>();
                 const rxns: Record<string, Reaction[]> = {};
+
                 data.forEach(m => {
                     map.set(m.id, m);
                     rxns[m.id] = m.reactions ?? [];
                 });
+
                 setMsgMap(map);
                 setReactions(rxns);
-                setLoading(false);
-                initialLoadedRef.current = true;
-                setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "instant" }), 50);
-            })
-            .catch(() => setLoading(false));
+
+            } catch {
+                if (!cancelled) {
+                    setMsgMap(new Map());
+                    setReactions({});
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                    initialLoadedRef.current = true;
+                }
+            }
+        }
+
+        loadMessages();
+
+        return () => { cancelled = true };
     }, [group.id]);
 
     // ── Pusher subscriptions ───────────────────────────────────────────────
@@ -447,7 +472,17 @@ export default function ChatPane({
         return colors[(name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % colors.length];
     }
 
+    
     // ── Render ─────────────────────────────────────────────────────────────
+    
+    if (!loading && notAllowed) {
+        return (
+            <div className="p-6 text-sm text-[var(--muted)]">
+                You need admin approval to view messages.
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col h-full bg-[var(--bg)]">
 
@@ -498,14 +533,14 @@ export default function ChatPane({
                     </svg>
                 </button>
             </div>
-
             {/* ── Messages area ── */}
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
                 className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 min-h-0"
                 style={{ scrollbarWidth: "thin" }}
-            >
+                >
+            
                 {/* Loading */}
                 {loading && (
                     <div className="flex justify-center items-center h-32">
@@ -530,6 +565,7 @@ export default function ChatPane({
 
                 {/* Messages */}
                 <div className="flex flex-col">
+                    
                     {messages.map((msg, i) => {
                         const isMe = msg.userId === currentUserId;
                         const isSystem = msg.userId === "system" || msg.id.startsWith("sys-");
@@ -550,7 +586,7 @@ export default function ChatPane({
                         const msgReactions = reactions[msg.id] ?? [];
                         const seenByOthers = (msg.receipts ?? []).some(r => r.userId !== currentUserId);
                         const isFirstUnread = msg.id === firstUnreadId;
-
+                        
                         // ── System message ──
                         if (isSystem) {
                             return (
@@ -561,6 +597,7 @@ export default function ChatPane({
                                 </div>
                             );
                         }
+
 
                         return (
                             <div key={msg.id} className={prevSameSender ? "mt-0.5" : "mt-4"}>

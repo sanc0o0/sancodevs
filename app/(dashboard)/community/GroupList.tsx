@@ -247,7 +247,7 @@ export default function GroupList({
 }
 
 function GroupRow({ group, active, onSelect, timeAgo, getInitial, getAvatarColor }: {
-    group: any; active: boolean; onSelect: () => void;
+    group: GroupSummary; active: boolean; onSelect: () => void;
     timeAgo: (s: string) => string;
     getInitial: (s: string) => string;
     getAvatarColor: (s: string) => string;

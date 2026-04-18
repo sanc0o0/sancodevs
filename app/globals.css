@@ -250,3 +250,19 @@ body {
   50%  { background: var(--accent-10, rgba(240,240,240,0.10)); }
   100% { background: transparent; }
 }
+
+/* Community gets no padding — it manages its own layout */
+.community-wrapper {
+    height: 100%;
+}
+
+/* All other dashboard pages get standard padding */
+main > .community-wrapper > *:not([data-community]) {
+    padding: 2rem;
+}
+
+@media (max-width: 768px) {
+  .community-root {
+      left: 0 !important;
+  }
+}

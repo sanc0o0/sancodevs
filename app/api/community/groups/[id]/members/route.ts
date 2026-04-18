@@ -13,7 +13,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         where: { groupId_userId: { groupId, userId: session.user.id } },
     });
     if (!member || member.status !== "ACTIVE") {
-        return NextResponse.json({ error: "Not a member." }, { status: 403 });
+        return NextResponse.json(
+            { error: "Not a member.", code: "NOT_MEMBER" },
+            { status: 403 }
+        );
     }
 
     const members = await prisma.communityMember.findMany({

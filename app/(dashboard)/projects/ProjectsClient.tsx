@@ -143,100 +143,115 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
     };
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden">
+        <div style={{
+            height: "calc(100vh - 54px)", // account for navbar
+            display: "flex",
+            overflow: "hidden"
+        }}>
             <div className="flex flex-col gap-4 h-full w-full">
-                {/* Header */}
-                <div className="flex items-end justify-between flex-wrap gap-3">
-                    <div>
-                        <div className="w-7 h-0.5 bg-[var(--accent)] mb-3" />
-                        <h1 className="text-xl font-medium text-[var(--text)] mb-1">Projects</h1>
-                        <p className="text-sm text-[var(--muted)]">Commit to a project. Ship it. No half-finished demos.</p>
+                <div className="flex flex-col gap-4 flex-shrink-0">
+                    {/* Header */}
+                    <div className="flex items-end justify-between flex-wrap gap-3">
+                        <div>
+                            <div className="w-7 h-0.5 bg-[var(--accent)] mb-3" />
+                            <h1 className="text-xl font-medium text-[var(--text)] mb-1">Projects</h1>
+                            <p className="text-sm text-[var(--muted)]">Commit to a project. Ship it. No half-finished demos.</p>
+                        </div>
+                        <Link
+                            href="/projects/new"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent)] text-[var(--bg)] no-underline transition-opacity hover:opacity-85 active:scale-[0.97]"
+                        >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            New project
+                        </Link>
                     </div>
-                    <Link
-                        href="/projects/new"
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent)] text-[var(--bg)] no-underline transition-opacity hover:opacity-85 active:scale-[0.97]"
-                    >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                        New project
-                    </Link>
-                </div>
 
-                {/* Quick filter chips */}
-                <div className="flex flex-wrap gap-2">
-                    {QUICK_FILTERS.map(qf => {
-                        const isActive = filters[qf.key as keyof ActiveFilters]?.includes(qf.value);
-                        return (
-                            <button
-                                key={qf.label}
-                                onClick={() => toggleFilter(qf.key as keyof ActiveFilters, qf.value)}
-                                className={`px-3 py-1.5 rounded-full text-xs border transition-all cursor-pointer
-                                    ${isActive
-                                        ? "border-[var(--accent)] bg-[var(--surface2)] text-[var(--text)]"
-                                        : "border-[var(--border)] bg-transparent text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)]"
-                                    }`}
-                            >
-                                {qf.label}
-                            </button>
-                        );
-                    })}
-                </div>
+                    {/* Quick filter chips */}
+                    <div className="flex flex-wrap gap-2">
+                        {QUICK_FILTERS.map(qf => {
+                            const isActive = filters[qf.key as keyof ActiveFilters]?.includes(qf.value);
+                            return (
+                                <button
+                                    key={qf.label}
+                                    onClick={() => toggleFilter(qf.key as keyof ActiveFilters, qf.value)}
+                                    className={`px-3 py-1.5 rounded-full text-xs border transition-all cursor-pointer
+                                        ${isActive
+                                            ? "border-[var(--accent)] bg-[var(--surface2)] text-[var(--text)]"
+                                            : "border-[var(--border)] bg-transparent text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)]"
+                                        }`}
+                                >
+                                    {qf.label}
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                {/* Search + sort + mobile filter trigger */}
-                <div className="flex gap-3 items-center flex-wrap">
-                    <input
-                        className="form-input flex-1 min-w-[200px]"
-                        type="text"
-                        placeholder="Search projects..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                    />
-                    <select
-                        className="form-select"
-                        title="Sort projects"
-                        aria-label="Sort projects"
-                        value={sort}
-                        onChange={e => setSort(e.target.value as "newest" | "popular")}
-                        style={{ width: "140px" }}
-                    >
-                        <option value="newest">Newest</option>
-                        <option value="popular">Most popular</option>
-                    </select>
-                    {/* Mobile filter button */}
-                    <button
-                        onClick={() => setDrawerOpen(true)}
-                        className="show-mobile flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--muted)] cursor-pointer"
-                        style={{ display: "none" }}
-                    >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
-                        Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-                    </button>
-                </div>
-
-                {/* Active filter chips */}
-                {activeFilterCount > 0 && (
-                    <div className="flex flex-wrap gap-2 items-center">
-                        <span className="text-xs text-[var(--muted)]">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
-                        {Object.entries(filters).flatMap(([cat, vals]) =>
-                            vals.map(val => (
-                                <span key={`${cat}-${val}`} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-[var(--accent)] bg-[var(--surface2)] text-[var(--text)]">
-                                    {val}
-                                    <button
-                                        onClick={() => toggleFilter(cat as keyof ActiveFilters, val)}
-                                        className="text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer text-sm leading-none"
-                                    >×</button>
-                                </span>
-                            ))
-                        )}
-                        <button onClick={clearAll} className="text-xs text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer underline">
-                            Clear all
+                    {/* Search + sort + mobile filter trigger */}
+                    <div className="flex gap-3 items-center flex-wrap">
+                        <input
+                            className="form-input flex-1 min-w-[200px]"
+                            type="text"
+                            placeholder="Search projects..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                        <select
+                            className="form-select"
+                            title="Sort projects"
+                            aria-label="Sort projects"
+                            value={sort}
+                            onChange={e => setSort(e.target.value as "newest" | "popular")}
+                            style={{ width: "140px" }}
+                        >
+                            <option value="newest">Newest</option>
+                            <option value="popular">Most popular</option>
+                        </select>
+                        {/* Mobile filter button */}
+                        <button
+                            onClick={() => setDrawerOpen(true)}
+                            className="show-mobile flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--muted)] cursor-pointer"
+                            style={{ display: "none" }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+                            Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
                         </button>
                     </div>
-                )}
+
+                    {/* Active filter chips */}
+                    {activeFilterCount > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-xs text-[var(--muted)]">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
+                            {Object.entries(filters).flatMap(([cat, vals]) =>
+                                vals.map(val => (
+                                    <span key={`${cat}-${val}`} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-[var(--accent)] bg-[var(--surface2)] text-[var(--text)]">
+                                        {val}
+                                        <button
+                                            onClick={() => toggleFilter(cat as keyof ActiveFilters, val)}
+                                            className="text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer text-sm leading-none"
+                                        >×</button>
+                                    </span>
+                                ))
+                            )}
+                            <button onClick={clearAll} className="text-xs text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer underline">
+                                Clear all
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 {/* Main layout */}
                 <div className="flex gap-5 flex-1 min-h-0 overflow-hidden">
                     {/* Desktop filter sidebar */}
-                    <aside className="hidden-mobile w-52 flex-shrink-0 h-full overflow-y-auto pr-1">
+                    <aside
+                        className="hidden-mobile"
+                        style={{
+                            width: "220px",
+                            flexShrink: 0,
+                            overflowY: "auto",
+                            borderRight: "0.5px solid var(--border)",
+                            padding: "1.5rem 1rem",
+                        }}
+                    >
                         <div className="text-[11px] text-[var(--muted)] uppercase tracking-wider mb-3 flex items-center justify-between">
                             <span>Filters</span>
                             {activeFilterCount > 0 && (
@@ -249,7 +264,14 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                     </aside>
 
                     {/* Projects list */}
-                    <div className="flex-1 min-w-0 h-full min-h-0 overflow-y-auto pr-1 flex flex-col gap-2.5">
+                    <div
+                        style={{
+                            flex: 1,
+                            overflowY: "auto",
+                            padding: "1.5rem 2rem",
+                            minWidth: 0,
+                        }}
+                    >
                         {filtered.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 border border-[var(--border)] rounded-xl bg-[var(--surface)] text-center">
                                 <div className="w-7 h-0.5 bg-[var(--border)] mb-4 mx-auto" />

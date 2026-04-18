@@ -207,12 +207,24 @@ model UserActivity {
   user User @relation(fields: [userId], references: [id])
 }
 
+enum MemberStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  LEFT
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
 model CommunityGroup {
   id          String   @id @default(uuid())
   name        String
   description String?
   createdBy   String
-  isPrivate   Boolean  @default(false)
+  isPrivate   Boolean  @default(true)
   createdAt   DateTime @default(now())
 
   members  CommunityMember[]
@@ -262,17 +274,17 @@ model CommunityMessage {
 }
 
 model CommunityMember {
-  id       String   @id @default(uuid())
+  id       String         @id @default(uuid())
   groupId  String
   userId   String
-  role     String   @default("MEMBER")
-  muted    Boolean  @default(false)
-  pinned   Boolean  @default(false)
-  status   String   @default("ACTIVE") // ACTIVE | PENDING | LEFT
-  joinedAt DateTime @default(now())
+  role     MemberRole     @default(MEMBER)
+  muted    Boolean        @default(false)
+  pinned   Boolean        @default(false)
+  status   MemberStatus   @default(PENDING) // PENDING | ACTIVE | REJECTED | LEFT
+  joinedAt DateTime       @default(now())
 
-  group CommunityGroup @relation(fields: [groupId], references: [id])
-  user  User           @relation(fields: [userId], references: [id])
+  group CommunityGroup    @relation(fields: [groupId], references: [id])
+  user  User              @relation(fields: [userId], references: [id])
 
   @@unique([groupId, userId])
 }

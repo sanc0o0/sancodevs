@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { pusher } from "@/lib/pusher";
 
 export async function GET() {
     const projects = await prisma.project.findMany({
@@ -65,44 +66,47 @@ export async function POST(req: Request) {
 
   
     // Only notify if project has techStack
-    if (normalizedTechStack.length > 0) {
-        // Step 1: Find users with overlapping preferences
-        const matchingPrefs = await prisma.userPreferences.findMany({
-            where: {
-                userId: { not: session.user.id },
-                prefTechs: { hasSome: normalizedTechStack },
-            },
-            select: {
-                userId: true,
-                prefTechs: true,
-            },
-        });
+    // After creating the project:
+    if (techStack && techStack.length > 0) {
+        // Normalize project tech stack
+        const normalizedProjectTechs: string[] = techStack
+            .map((t: string) => t.toLowerCase().trim())
+            .filter(Boolean);
 
-        // Step 2: Safety check (handles any bad/unnormalized DB data)
-        const trulyMatching = matchingPrefs.filter(pref =>
-            pref.prefTechs.some(t =>
-                normalizedTechStack.includes(t.toLowerCase().trim())
-            )
-        );
-
-        // Step 3: Create notifications (only for real matches)
-        if (trulyMatching.length > 0) {
-            await prisma.notification.createMany({
-                data: trulyMatching.map(pref => {
-                    const matchedTechs = pref.prefTechs.filter(t =>
-                        normalizedTechStack.includes(t.toLowerCase().trim())
-                    );
-
-                    return {
-                        userId: pref.userId,
-                        title: "New project matches your interests",
-                        body: `"${title}" uses ${matchedTechs.slice(0, 2).join(", ")} — check it out.`,
-                        href: `/projects/${project.id}`,
-                    };
-                }),
+        if (normalizedProjectTechs.length > 0) {
+            // Get ALL user preferences
+            const allPrefs = await prisma.userPreferences.findMany({
+                where: { userId: { not: session.user.id } },
+                select: { userId: true, prefTechs: true },
             });
+
+            // Filter in code with normalized comparison (bulletproof)
+            const matchingUsers = allPrefs.filter(pref => {
+                if (!pref.prefTechs || pref.prefTechs.length === 0) return false;
+                const normalizedPrefTechs: string[] = pref.prefTechs
+                    .map((t: string) => t.toLowerCase().trim());
+                return normalizedProjectTechs.some((pt) => normalizedPrefTechs.includes(pt));
+            });
+
+            const matchedTechDisplay = techStack.slice(0, 2).join(", ");
+
+            await Promise.all(
+                matchingUsers.map(async (pref) => {
+                    const notif = await prisma.notification.create({
+                        data: {
+                            userId: pref.userId,
+                            title: "New project matches your stack",
+                            body: `"${title}" uses ${matchedTechDisplay}${techStack.length > 2 ? " and more" : ""}.`,
+                            href: `/projects/${project.id}`,
+                        },
+                    });
+
+                    await pusher.trigger(`user-${pref.userId}`, "notification:new", notif);
+                })
+              );
         }
     }
+    // If no techStack → notify NOBODY (removed global notification fallback)
 
    
 
@@ -122,15 +126,6 @@ export async function POST(req: Request) {
             data: { communityGroupId: group.id },
         });
     }
-
-    await prisma.notification.create({
-        data: {
-            userId: session.user.id,
-            title: "Project created",
-            body: `Your project "${title}" is now live.`,
-            href: `/projects/${project.id}`,
-        },
-    });
 
     return NextResponse.json(project, { status: 201 });
 }

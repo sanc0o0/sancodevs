@@ -9,16 +9,26 @@ export async function POST(req: Request) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { groupId } = await req.json();
+    if (!groupId) return NextResponse.json({ error: "groupId required" }, { status: 400 });
 
     const member = await prisma.communityMember.findUnique({
         where: { groupId_userId: { groupId, userId: session.user.id } },
     });
 
-    if (!member) return NextResponse.json({ error: "Not a member." }, { status: 404 });
+    if (!member || member.status !== "ACTIVE") {
+        return NextResponse.json({ error: "Not an active member." }, { status: 404 });
+    }
 
-    // Admins can't leave (must transfer ownership first)
     if (member.role === "ADMIN") {
-        return NextResponse.json({ error: "Transfer admin role before leaving." }, { status: 400 });
+        // Check if there are other admins
+        const otherAdmins = await prisma.communityMember.count({
+            where: { groupId, role: "ADMIN", status: "ACTIVE", userId: { not: session.user.id } },
+        });
+        if (otherAdmins === 0) {
+            return NextResponse.json({
+                error: "You're the only admin. Transfer ownership before leaving.",
+            }, { status: 400 });
+        }
     }
 
     await prisma.communityMember.update({
@@ -26,10 +36,11 @@ export async function POST(req: Request) {
         data: { status: "LEFT" },
     });
 
-    // After updating status to LEFT:
+    // Notify group in real-time
     await pusher.trigger(`group-${groupId}`, "member:left", {
         userId: session.user.id,
         userName: session.user.name,
     });
+
     return NextResponse.json({ success: true });
 }
