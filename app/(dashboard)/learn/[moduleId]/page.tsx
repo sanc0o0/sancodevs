@@ -118,11 +118,12 @@ export default async function ModulePage({
 
             {/* Module navigation */}
             <ModuleActions
+                moduleId={moduleId}
                 moduleIndex={moduleIndex}
                 pathId={onboarding.pathId}
-                isDone={isDone}
-                nextIndex={nextIndex}
-                prevIndex={prevIndex}
+                totalModules={path.modules.length}
+                alreadyCompleted={isDone}
+                hasContent={!!content}
             />
         </div>
     );
