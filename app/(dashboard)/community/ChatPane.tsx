@@ -694,66 +694,69 @@ export default function ChatPane({
                                                 )}
 
                                                 {/* ── Hover action bar — tightly attached ── */}
-                                                {hovered === msg.id && !isTemp && (
-                                                    <div className={`absolute -top-8 ${isMe ? "right-0" : "left-0"} flex items-center gap-0.5 
-                                                        bg-[var(--surface)] border border-[var(--border)] rounded-xl px-1.5 py-1 
-                                                        shadow-lg z-20 whitespace-nowrap`}
-                                                        style={{ animation: "fadeIn 0.1s ease" }}
-                                                    >
-                                                        {/* React */}
-                                                        <div className="relative">
-                                                            <button
-                                                                onClick={() => setEmojiPickerFor(emojiPickerFor === msg.id ? null : msg.id)}
-                                                                className="w-6 h-6 flex items-center justify-center text-sm rounded-lg hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent transition-colors"
-                                                                title="React"
-                                                            >😊</button>
-                                                            {emojiPickerFor === msg.id && (
-                                                                <div
-                                                                    className={`absolute bottom-8 ${isMe ? "right-0" : "left-0"} flex flex-wrap gap-1 p-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] z-30 w-48 shadow-2xl`}
-                                                                    style={{ animation: "fadeIn 0.1s ease" }}
-                                                                >
-                                                                    {EMOJI_OPTIONS.map(e => (
-                                                                        <button
-                                                                            key={e}
-                                                                            onClick={() => toggleReaction(msg.id, e)}
-                                                                            className="text-xl p-1.5 rounded-xl hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent hover:scale-125 transition-all"
-                                                                        >{e}</button>
-                                                                    ))}
+                                                        {/* ── Hover action bar — beside bubble, not above ── */}
+                                                        {hovered === msg.id && !isTemp && !isDeleted && (
+                                                            <div
+                                                                className={`
+                                                                    absolute top-0
+                                                                    ${isMe ? "-left-24" : "-right-24"}
+                                                                    flex items-center gap-0.5
+                                                                    bg-[var(--surface)] border border-[var(--border)] rounded-xl
+                                                                    px-1.5 py-1 shadow-lg z-20
+                                                                `}
+                                                                style={{ animation: "fadeIn 0.12s ease" }}
+                                                            >
+                                                                {/* React */}
+                                                                <div className="relative">
+                                                                    <button
+                                                                        onClick={() => setEmojiPickerFor(emojiPickerFor === msg.id ? null : msg.id)}
+                                                                        className="w-6 h-6 flex items-center justify-center text-sm rounded-lg hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent transition-colors"
+                                                                        title="React"
+                                                                    >😊</button>
+                                                                    {emojiPickerFor === msg.id && (
+                                                                        <div
+                                                                            className={`absolute top-8 ${isMe ? "right-0" : "left-0"} flex flex-wrap gap-1 p-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] z-30 w-48 shadow-2xl`}
+                                                                            style={{ animation: "fadeIn 0.1s ease" }}
+                                                                        >
+                                                                            {EMOJI_OPTIONS.map(e => (
+                                                                                <button
+                                                                                    key={e}
+                                                                                    onClick={() => toggleReaction(msg.id, e)}
+                                                                                    className="text-xl p-1.5 rounded-xl hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent hover:scale-125 transition-all"
+                                                                                >{e}</button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
-                                                        </div>
 
-                                                        {/* Edit — own messages only */}
-                                                        {isMe && (
-                                                            <button
-                                                                onClick={() => { setEditingId(msg.id); setEditContent(msg.content ?? ""); }}
-                                                                className="w-6 h-6 flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent transition-colors"
-                                                                title="Edit"
-                                                            >
-                                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                                </svg>
-                                                            </button>
+                                                                {isMe && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => { setEditingId(msg.id); setEditContent(msg.content ?? ""); }}
+                                                                            className="w-6 h-6 flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent transition-colors"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                                            </svg>
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => deleteMessage(msg.id)}
+                                                                            className="w-6 h-6 flex items-center justify-center text-red-400 hover:bg-red-400/10 rounded-lg cursor-pointer border-none bg-transparent transition-colors"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                <polyline points="3 6 5 6 21 6" />
+                                                                                <path d="M19 6l-1 14H6L5 6" />
+                                                                                <path d="M10 11v6M14 11v6" />
+                                                                                <path d="M9 6V4h6v2" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                            </div>
                                                         )}
-
-                                                        {/* Delete — own messages only */}
-                                                        {isMe && (
-                                                            <button
-                                                                onClick={() => deleteMessage(msg.id)}
-                                                                className="w-6 h-6 flex items-center justify-center text-red-400 hover:bg-red-400/10 rounded-lg cursor-pointer border-none bg-transparent transition-colors"
-                                                                title="Delete"
-                                                            >
-                                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                    <polyline points="3 6 5 6 21 6" />
-                                                                    <path d="M19 6l-1 14H6L5 6" />
-                                                                    <path d="M10 11v6M14 11v6" />
-                                                                    <path d="M9 6V4h6v2" />
-                                                                </svg>
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                )}
                                             </div>
                                         )}
 
@@ -847,7 +850,7 @@ export default function ChatPane({
             <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--bg)] px-3 py-2.5">
                 <form onSubmit={sendMessage} className="flex items-end gap-2">
                     {/* Attach */}
-                    <label className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors">
+                    <label className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                         </svg>
@@ -883,7 +886,7 @@ export default function ChatPane({
                             placeholder={uploading ? "Uploading..." : "Message..."}
                             disabled={uploading}
                             rows={1}
-                            className="w-full text-sm bg-[var(--surface2)] rounded-2xl px-4 py-2.5 border border-transparent focus:border-[var(--border)] outline-none text-[var(--text)] placeholder:text-[var(--muted)] resize-none leading-5 transition-colors block"
+                            className="w-full text-sm bg-[var(--surface2)] rounded-full px-4 py-2.5 border border-transparent focus:border-[var(--border)] outline-none text-[var(--text)] placeholder:text-[var(--muted)] resize-none leading-5 transition-colors block"
                             style={{ minHeight: "40px", maxHeight: "120px" }}
                         />
                     </div>
@@ -892,10 +895,10 @@ export default function ChatPane({
                     <button
                         type="submit"
                         disabled={sending || (!content.trim() && !mediaFile) || uploading}
-                        className="flex-shrink-0 w-9 h-9 rounded-full bg-[var(--accent)] text-[var(--bg)] border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center hover:opacity-85 transition-opacity active:scale-95"
+                        className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--accent)] text-[var(--bg)] border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center hover:opacity-85 transition-opacity active:scale-95"
                         title="Send"
                     >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                         </svg>
                     </button>

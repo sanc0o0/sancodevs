@@ -13,7 +13,6 @@ export async function POST(
 
     const { id: groupId } = await params;
     const { targetUserId, action } = await req.json();
-    // action: "approve" | "reject"
 
     if (!targetUserId || !["approve", "reject"].includes(action)) {
         return NextResponse.json({ error: "Invalid request." }, { status: 400 });
@@ -30,28 +29,37 @@ export async function POST(
     const group = await prisma.communityGroup.findUnique({ where: { id: groupId } });
     if (!group) return NextResponse.json({ error: "Group not found." }, { status: 404 });
 
+    const targetMember = await prisma.communityMember.findUnique({
+        where: { groupId_userId: { groupId, userId: targetUserId } },
+    });
+    if (!targetMember || targetMember.status !== "PENDING") {
+        return NextResponse.json({ error: "No pending request found." }, { status: 404 });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { name: true },
+    });
+
     if (action === "approve") {
         await prisma.communityMember.update({
             where: { groupId_userId: { groupId, userId: targetUserId } },
             data: { status: "ACTIVE" },
         });
 
-        // Notify the user they were approved
         const notif = await prisma.notification.create({
             data: {
                 userId: targetUserId,
                 title: `You're in — ${group.name}`,
                 body: `Your request to join "${group.name}" was approved.`,
-                href: `/community`,
+                href: `/community?groupId=${groupId}`,
             },
         });
         await pusher.trigger(`user-${targetUserId}`, "notification:new", notif);
-        await pusher.trigger(`user-${targetUserId}`, "join:accepted", {
-            groupId, groupName: group.name,
-        });
+        await pusher.trigger(`user-${targetUserId}`, "join:accepted", { groupId, groupName: group.name });
         await pusher.trigger(`group-${groupId}`, "member:joined", {
             userId: targetUserId,
-            userName: (await prisma.user.findUnique({ where: { id: targetUserId }, select: { name: true } }))?.name,
+            userName: targetUser?.name,
         });
 
     } else {
@@ -65,13 +73,11 @@ export async function POST(
                 userId: targetUserId,
                 title: `Request declined — ${group.name}`,
                 body: `Your request to join "${group.name}" was not approved.`,
-                href: `/community`,
+                href: `/community?tab=requests`,
             },
         });
         await pusher.trigger(`user-${targetUserId}`, "notification:new", notif);
-        await pusher.trigger(`user-${targetUserId}`, "join:rejected", {
-            groupId, groupName: group.name,
-        });
+        await pusher.trigger(`user-${targetUserId}`, "join:rejected", { groupId, groupName: group.name });
     }
 
     return NextResponse.json({ success: true, action });

@@ -30,10 +30,11 @@ interface Props {
     onClose: () => void;
     onGroupUpdated: (updates: Partial<Group>) => void;
     onGroupLeft: () => void;
+    initialTab?: "members" | "pending";
 }
 
 export default function DetailsPane({
-    group, currentUserId, isAdmin, onClose, onGroupUpdated, onGroupLeft,
+    group, currentUserId, isAdmin, onClose, onGroupUpdated, onGroupLeft, initialTab
 }: Props) {
     const [members, setMembers] = useState<Member[]>([]);
     const [pending, setPending] = useState<PendingRequest[]>([]);
@@ -44,8 +45,7 @@ export default function DetailsPane({
     const [newName, setNewName] = useState(group.name);
     const [leaving, setLeaving] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-    const [tab, setTab] = useState<"members" | "pending">("members");
-    const [approving, setApproving] = useState<string | null>(null);
+    const [tab, setTab] = useState<"members" | "pending">(initialTab ?? "members");    const [approving, setApproving] = useState<string | null>(null);
     const [addEmail, setAddEmail] = useState("");
     const [addError, setAddError] = useState("");
     const [addSuccess, setAddSuccess] = useState("");
@@ -295,9 +295,14 @@ export default function DetailsPane({
                         />
                         <label
                             htmlFor="mute-toggle"
-                            className={`w-10 h-5 rounded-full cursor-pointer relative block transition-colors ${muted ? "bg-[var(--muted)]" : "bg-[var(--accent)]"}`}
+                            className={`w-10 h-5 rounded-full cursor-pointer relative block transition-colors ${muted ? "bg-[var(--accent)]" : "bg-[var(--muted)]/30"}`}
                         >
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${muted ? "left-0.5" : "left-5"}`} />
+                             <div
+                                className={`absolute top-[1.8px] w-4 h-4 rounded-full shadow transition-all ${muted
+                                        ? "left-[22px] bg-[var(--bg)] "
+                                        : "left-0.5 bg-white"
+                                    }`}
+                            />
                         </label>
                     </div>
                 </div>
@@ -318,7 +323,12 @@ export default function DetailsPane({
                             htmlFor="pin-toggle"
                             className={`w-10 h-5 rounded-full cursor-pointer relative block transition-colors ${pinned ? "bg-[var(--accent)]" : "bg-[var(--muted)]/30"}`}
                         >
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${pinned ? "left-5" : "left-0.5"}`} />
+                            <div
+                                className={`absolute top-[1.8px] w-4 h-4 rounded-full shadow transition-all ${pinned
+                                        ? "left-[22px] bg-[var(--bg)] "
+                                        : "left-0.5 bg-white"
+                                    }`}
+                            />
                         </label>
                     </div>
                 </div>

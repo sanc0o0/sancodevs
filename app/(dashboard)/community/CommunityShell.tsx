@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import GroupList from "./GroupList";
 import ChatPane from "./ChatPane";
 import DetailsPane from "./DetailsPane";
+
 
 type GroupSummary = {
     id: string;
@@ -14,6 +15,7 @@ type GroupSummary = {
     memberCount: number;
     muted: boolean;
     pinned: boolean;
+    role: "ADMIN" | "MEMBER";
     lastMessage: {
         senderName: string | null;
         content: string | null;
@@ -29,29 +31,94 @@ type DiscoverGroup = {
     memberCount: number;
 };
 
+type RequestSummary = {
+    groupId: string;
+    status: "PENDING" | "INVITED";
+    group: { 
+        id: string; 
+        name: string; 
+        description: string | null; 
+        isPrivate: boolean; 
+        memberCount: number 
+    };
+};
+
 interface Props {
     myGroups: GroupSummary[];
+    myRequests: RequestSummary[];
     discoverGroups: DiscoverGroup[];
     currentUserId: string;
     currentUserName: string;
     currentUserImage: string | null;
+    initialTab?: "chats" | "requests" | "discover";
 }
 
 export default function CommunityShell({
     myGroups,
+    myRequests,
     discoverGroups,
     currentUserId,
     currentUserName,
     currentUserImage,
 }: Props) {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
     const [activeGroupId, setActiveGroupId] = useState<string | null>(
-        myGroups[0]?.id ?? null
+        searchParams.get("groupId") ?? myGroups[0]?.id ?? null
     );
     const [showDetails, setShowDetails] = useState(false);
-    const [groups, setGroups] = useState(myGroups);
+    const [detailsTab, setDetailsTab] = useState<"members" | "pending">("members");
+    const [groups, setGroups] = useState<GroupSummary[]>(myGroups);
     const [memberRoles, setMemberRoles] = useState<Record<string, "ADMIN" | "MEMBER">>({});
+    const [requests, setRequests] = useState<RequestSummary[]>(myRequests);
+    const [groupListTab, setGroupListTab] = useState<"chats" | "requests" | "discover">(
+        (searchParams.get("tab") as "chats" | "requests" | "discover") ?? "chats"
+    );
+   
+    // useEffect(() => {
+    //     const [tab, setTab] = useState<"chats" | "requests" | "discover">(initialTab ?? "chats");        const groupId = searchParams.get("groupId");
 
+    //     if (tab) setGroupListTab(tab);
+
+    //     if (groupId) {
+    //         setActiveGroupId(groupId);
+    //         // If it's a join request notification, open details pane on requests tab
+    //         if (tab === "requests" || searchParams.get("pendingTab")) {
+    //             setShowDetails(true);
+    //             setDetailsTab("pending");
+    //         }
+    //     }
+
+    //     // Clean URL after reading params
+    //     if (tab || groupId) {
+    //         router.replace("/community", { scroll: false });
+    //     }
+    // }, []);
+    
     // Load role when active group changes
+
+    // ADD this useEffect instead:
+    useEffect(() => {
+        const tab = searchParams.get("tab") as "chats" | "requests" | "discover" | null;
+        const groupId = searchParams.get("groupId");
+
+        if (tab) setGroupListTab(tab);
+
+        if (groupId) {
+            setActiveGroupId(groupId);
+            if (tab === "requests" || searchParams.get("pendingTab")) {
+                setShowDetails(true);
+                setDetailsTab("pending");
+            }
+        }
+
+        if (tab || groupId) {
+            router.replace("/community", { scroll: false });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // intentionally empty — only run on mount
+
     useEffect(() => {
         if (!activeGroupId) return;
         fetch(`/api/community/groups/${activeGroupId}/members`)
@@ -77,9 +144,18 @@ export default function CommunityShell({
     }
 
     function handleGroupLeft(id: string) {
-        setGroups(prev => prev.filter(g => g.id !== id));
-        if (activeGroupId === id) setActiveGroupId(groups.find(g => g.id !== id)?.id ?? null);
+        // preserve role property so type stays GroupSummary[]
+        setGroups(prev => prev.filter((g: GroupSummary) => g.id !== id));
+        setActiveGroupId(prev => prev === id
+            ? (groups.find(g => g.id !== id)?.id ?? null)
+            : prev
+        );
     }
+
+    function handleRequestResponded(groupId: string) {
+        setRequests(prev => prev.filter((r: RequestSummary) => r.groupId !== groupId));
+    }
+
     // In CommunityShell.tsx — replace the return:
     return (
         <div
@@ -104,11 +180,17 @@ export default function CommunityShell({
             `}>
                 <GroupList
                     groups={groups}
+                    requests={requests}
                     discoverGroups={discoverGroups}
                     activeGroupId={activeGroupId}
-                    onSelectGroup={id => { setActiveGroupId(id); setShowDetails(false); }}
+                    onSelectGroup={id => { 
+                        setActiveGroupId(id); 
+                        setShowDetails(false); 
+                    }}
                     onGroupCreated={handleGroupCreated}
+                    onRequestResponded={handleRequestResponded}
                     currentUserId={currentUserId}
+                    initialTab={groupListTab}
                 />
             </div>
 
@@ -166,6 +248,7 @@ export default function CommunityShell({
                             onClose={() => setShowDetails(false)}
                             onGroupUpdated={updates => handleGroupUpdated(activeGroup.id, updates)}
                             onGroupLeft={() => handleGroupLeft(activeGroup.id)}
+                            initialTab={detailsTab}
                         />
                     </div>
                 </>

@@ -9,23 +9,25 @@ export async function POST(req: Request) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { groupId } = await req.json();
-    if (!groupId) return NextResponse.json({ error: "groupId required" }, { status: 400 });
+    if (!groupId) return NextResponse.json({ error: "groupId required." }, { status: 400 });
 
     const group = await prisma.communityGroup.findUnique({ where: { id: groupId } });
     if (!group) return NextResponse.json({ error: "Group not found." }, { status: 404 });
+
+    // Can only request to join PUBLIC groups via discover
+    if (group.isPrivate) {
+        return NextResponse.json({ error: "This group is private. You can only join by invitation." }, { status: 403 });
+    }
 
     const existing = await prisma.communityMember.findUnique({
         where: { groupId_userId: { groupId, userId: session.user.id } },
     });
 
-    if (existing?.status === "ACTIVE") {
-        return NextResponse.json({ error: "Already a member.", status: "ACTIVE" }, { status: 409 });
-    }
-    if (existing?.status === "PENDING") {
-        return NextResponse.json({ error: "Request already pending.", status: "PENDING" }, { status: 409 });
-    }
+    if (existing?.status === "ACTIVE") return NextResponse.json({ error: "Already a member.", status: "ACTIVE" }, { status: 409 });
+    if (existing?.status === "PENDING") return NextResponse.json({ error: "Request already pending.", status: "PENDING" }, { status: 409 });
+    if (existing?.status === "INVITED") return NextResponse.json({ error: "You have a pending invitation.", status: "INVITED" }, { status: 409 });
 
-    // STRICT: ALL groups require approval — no auto-join ever
+    // Create PENDING request
     await prisma.communityMember.upsert({
         where: { groupId_userId: { groupId, userId: session.user.id } },
         update: { status: "PENDING" },
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
         },
     });
 
-    // Notify ALL admins of this group
+    // Notify ALL admins
     const admins = await prisma.communityMember.findMany({
         where: { groupId, role: "ADMIN", status: "ACTIVE" },
         select: { userId: true },
@@ -49,10 +51,8 @@ export async function POST(req: Request) {
                 userId: admin.userId,
                 title: `Join request — ${group.name}`,
                 body: `${session.user.name ?? "Someone"} wants to join your group.`,
-                href: `/community`,
-            },
+                href: `/community?tab=requests&groupId=${groupId}`,            },
         });
-        // Real-time notification to admin
         await pusher.trigger(`user-${admin.userId}`, "notification:new", notif);
         await pusher.trigger(`user-${admin.userId}`, "join:request:new", {
             groupId,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { put } from "@vercel/blob";
+import { put } from "@vercel/blob";                    
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -21,7 +21,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Only images and videos allowed." }, { status: 400 });
     }
 
-    const blob = await put(`chat/${session.user.id}-${Date.now()}-${file.name}`, file, { access: "public" });
+    const blob = await put(
+        `chat/${session.user.id}-${Date.now()}-${file.name}`,
+        file,
+        { access: "public" }           //  must be "public"
+    );
 
     return NextResponse.json({
         url: blob.url,

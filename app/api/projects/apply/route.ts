@@ -28,8 +28,7 @@ export async function POST(req: Request) {
             userId: project.createdBy,
             title: `New join request — ${project.title}`,
             body: `${session.user.name ?? "Someone"} wants to join your project.`,
-            href: `/projects/${projectId}`,
-        },
+            href: `/projects/${projectId}?tab=requests`,        },
     });
 
     return NextResponse.json({ success: true });
