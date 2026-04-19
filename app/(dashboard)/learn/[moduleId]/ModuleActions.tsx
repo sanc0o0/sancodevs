@@ -3,8 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { PATHS } from "@/lib/path";
-import { CONTENT } from "@/lib/content"; // your content map
 
 interface Props {
     moduleId: string;
@@ -12,11 +10,11 @@ interface Props {
     pathId: string;
     totalModules: number;
     alreadyCompleted: boolean;
-    hasContent: boolean; // pass from server — whether real content exists
+    hasContent: boolean;
 }
 
 export default function ModuleActions({
-    moduleId, moduleIndex, pathId, totalModules, alreadyCompleted, hasContent
+    moduleIndex, pathId, totalModules, alreadyCompleted, hasContent,
 }: Props) {
     const router = useRouter();
     const [marking, setMarking] = useState(false);
@@ -26,7 +24,7 @@ export default function ModuleActions({
     const nextIndex = moduleIndex + 1;
 
     async function markComplete() {
-        if (!hasContent) return; // Block fake completion
+        if (!hasContent) return;
         setMarking(true);
         await fetch("/api/progress", {
             method: "POST",

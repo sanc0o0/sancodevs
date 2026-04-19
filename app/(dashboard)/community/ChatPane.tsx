@@ -58,6 +58,8 @@ export default function ChatPane({
     const [newMsgCount, setNewMsgCount] = useState(0);
     const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
     const [notAllowed, setNotAllowed] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -123,13 +125,13 @@ export default function ChatPane({
     }
 
     function scrollToBottom(force = false) {
-        if (force || isNearBottomRef.current) {
+        if (force) {
             bottomRef.current?.scrollIntoView({ behavior: "smooth" });
             setNewMsgCount(0);
             setFirstUnreadId(null);
         }
     }
-
+    
     function handleScroll() {
         const el = scrollRef.current;
         if (!el) return;
@@ -215,14 +217,12 @@ export default function ChatPane({
             });
             setReactions(prev => ({ ...prev, [msg.id]: msg.reactions ?? [] }));
 
-            const isFromOther = msg.userId !== currentUserId;
-            if (isFromOther && !isNearBottomRef.current) {
+            if (msg.userId !== currentUserId) {
+                // Never auto-scroll for others' messages — show badge instead
                 setNewMsgCount(c => c + 1);
                 setFirstUnreadId(id => id ?? msg.id);
             }
-            if (isNearBottomRef.current) {
-                setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-            }
+            // Only auto - scroll if it's our own message (sent optimistically)
         });
 
         channel.bind("message:updated", ({ id, content }: { id: string; content: string }) => {
@@ -351,6 +351,7 @@ export default function ChatPane({
         let mediaUrl: string | null = null;
         let mediaType: string | null = null;
 
+        // REPLACED the old silent-fail block:
         if (mediaFile) {
             setUploading(true);
             try {
@@ -359,8 +360,14 @@ export default function ChatPane({
                 const res = await fetch("/api/community/upload", { method: "POST", body: fd });
                 const data = await res.json();
                 if (res.ok) { mediaUrl = data.url; mediaType = data.type; }
-                else { setSending(false); setUploading(false); return; }
-            } catch { setSending(false); setUploading(false); return; }
+                else {
+                    setUploadError(data.error ?? "Upload failed.");
+                    setSending(false); setUploading(false); return;
+                }
+            } catch {
+                setUploadError("Upload failed. Check your connection.");
+                setSending(false); setUploading(false); return;
+            }
             setUploading(false);
         }
 
@@ -375,6 +382,7 @@ export default function ChatPane({
             reactions: [], receipts: [],
         };
         upsertMessage(optimistic);
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
         setContent("");
         setMediaFile(null);
         setMediaPreview(null);
@@ -620,12 +628,14 @@ export default function ChatPane({
                                     {/* Avatar space */}
                                     <div className="flex-shrink-0 w-7">
                                         {showAvatar && (
-                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white overflow-hidden ${getColor(msg.user.name ?? "?")}`}>
-                                                {msg.user.image
-                                                    ? <img src={msg.user.image} alt="" className="w-full h-full object-cover" />
-                                                    : msg.user.name?.charAt(0).toUpperCase()
-                                                }
-                                            </div>
+                                            <a href={`/user/${msg.user.id}`} className="flex-shrink-0 no-underline" aria-label={`View ${msg.user.name}'s profile`}>
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white overflow-hidden cursor-pointer hover:opacity-80 transition-opacity ${getColor(msg.user.name ?? "?")}`}>
+                                                    {msg.user.image
+                                                        ? <img src={msg.user.image} alt="" className="w-full h-full object-cover" />
+                                                        : msg.user.name?.charAt(0).toUpperCase()
+                                                    }
+                                                </div>
+                                            </a>
                                         )}
                                     </div>
 
@@ -671,92 +681,110 @@ export default function ChatPane({
                                             <div className="relative">
                                                 {/* Media */}
                                                 {msg.mediaUrl && (
-                                                    <div className={`mb-1 rounded-2xl overflow-hidden border border-[var(--border)] max-w-[220px]
-                                                        ${isMe ? "rounded-br-sm" : "rounded-bl-sm"}`}>
-                                                        {msg.mediaType === "image"
-                                                            ? <img src={msg.mediaUrl} alt="media" className="w-full h-auto block" loading="lazy" />
-                                                            : <video src={msg.mediaUrl} controls className="w-full block max-h-48" />
-                                                        }
+                                                    <div className={`mb-1 rounded-2xl overflow-hidden border border-[var(--border)]
+                ${isMe ? "rounded-br-sm" : "rounded-bl-sm"}`}
+                                                        style={{ maxWidth: "240px" }}
+                                                    >
+                                                        {msg.mediaType === "image" ? (
+                                                            <img
+                                                                src={msg.mediaUrl}
+                                                                alt="media"
+                                                                loading="lazy"
+                                                                onClick={() => setSelectedImage(msg.mediaUrl!)}
+                                                                className="w-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                                                style={{ maxWidth: "240px", maxHeight: "320px" }}
+                                                            />
+                                                        ) : (
+                                                            <video
+                                                                src={msg.mediaUrl}
+                                                                controls
+                                                                className="block rounded-lg"
+                                                                style={{ maxWidth: "240px", maxHeight: "240px" }}
+                                                            />
+                                                        )}
                                                     </div>
                                                 )}
 
                                                 {/* Text bubble */}
                                                 {msg.content && (
                                                     <div className={`px-3 py-2 text-sm leading-relaxed break-words whitespace-pre-wrap rounded-2xl transition-opacity
-                                                        ${isMe
+                ${isMe
                                                             ? "bg-[var(--accent)] text-[var(--bg)] rounded-br-sm"
                                                             : "bg-[var(--surface2)] text-[var(--text)] rounded-bl-sm"
                                                         }
-                                                        ${isTemp ? "opacity-60" : "opacity-100"}`}
+                ${isTemp ? "opacity-60" : "opacity-100"}`}
                                                     >
                                                         {msg.content}
                                                     </div>
                                                 )}
 
-                                                {/* ── Hover action bar — tightly attached ── */}
-                                                        {/* ── Hover action bar — beside bubble, not above ── */}
-                                                        {hovered === msg.id && !isTemp && !isDeleted && (
-                                                            <div
-                                                                className={`
-                                                                    absolute top-0
-                                                                    ${isMe ? "-left-24" : "-right-24"}
-                                                                    flex items-center gap-0.5
-                                                                    bg-[var(--surface)] border border-[var(--border)] rounded-xl
-                                                                    px-1.5 py-1 shadow-lg z-20
-                                                                `}
-                                                                style={{ animation: "fadeIn 0.12s ease" }}
-                                                            >
-                                                                {/* React */}
-                                                                <div className="relative">
-                                                                    <button
-                                                                        onClick={() => setEmojiPickerFor(emojiPickerFor === msg.id ? null : msg.id)}
-                                                                        className="w-6 h-6 flex items-center justify-center text-sm rounded-lg hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent transition-colors"
-                                                                        title="React"
-                                                                    >😊</button>
-                                                                    {emojiPickerFor === msg.id && (
-                                                                        <div
-                                                                            className={`absolute top-8 ${isMe ? "right-0" : "left-0"} flex flex-wrap gap-1 p-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] z-30 w-48 shadow-2xl`}
-                                                                            style={{ animation: "fadeIn 0.1s ease" }}
-                                                                        >
-                                                                            {EMOJI_OPTIONS.map(e => (
-                                                                                <button
-                                                                                    key={e}
-                                                                                    onClick={() => toggleReaction(msg.id, e)}
-                                                                                    className="text-xl p-1.5 rounded-xl hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent hover:scale-125 transition-all"
-                                                                                >{e}</button>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
+                                                {/* ── Action bar — BESIDE bubble (not above) ── */}
+                                                {hovered === msg.id && !isTemp && (
+                                                    <div
+                                                        className={`
+                    absolute top-0
+                    ${isMe ? "-left-[96px]" : "-right-[96px]"}
+                    flex items-center gap-0.5
+                    bg-[var(--surface)] border border-[var(--border)]
+                    rounded-xl px-1.5 py-1 shadow-lg z-20 whitespace-nowrap
+                `}
+                                                        style={{ animation: "actionBarIn 0.12s ease" }}
+                                                    >
+                                                        {/* React */}
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={() => setEmojiPickerFor(emojiPickerFor === msg.id ? null : msg.id)}
+                                                                className="w-6 h-6 flex items-center justify-center text-sm rounded-lg hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent transition-colors"
+                                                                title="React"
+                                                                aria-label="React to message"
+                                                            >😊</button>
+                                                            {emojiPickerFor === msg.id && (
+                                                                <div
+                                                                    className={`absolute top-8 ${isMe ? "right-0" : "left-0"} flex flex-wrap gap-1 p-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] z-30 w-44 shadow-2xl`}
+                                                                    style={{ animation: "fadeIn 0.1s ease" }}
+                                                                >
+                                                                    {EMOJI_OPTIONS.map(e => (
+                                                                        <button
+                                                                            key={e}
+                                                                            onClick={() => toggleReaction(msg.id, e)}
+                                                                            className="text-xl p-1.5 rounded-xl hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent hover:scale-125 transition-all"
+                                                                            aria-label={`React with ${e}`}
+                                                                        >{e}</button>
+                                                                    ))}
                                                                 </div>
+                                                            )}
+                                                        </div>
 
-                                                                {isMe && (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => { setEditingId(msg.id); setEditContent(msg.content ?? ""); }}
-                                                                            className="w-6 h-6 flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent transition-colors"
-                                                                            title="Edit"
-                                                                        >
-                                                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                                            </svg>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => deleteMessage(msg.id)}
-                                                                            className="w-6 h-6 flex items-center justify-center text-red-400 hover:bg-red-400/10 rounded-lg cursor-pointer border-none bg-transparent transition-colors"
-                                                                            title="Delete"
-                                                                        >
-                                                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                                <polyline points="3 6 5 6 21 6" />
-                                                                                <path d="M19 6l-1 14H6L5 6" />
-                                                                                <path d="M10 11v6M14 11v6" />
-                                                                                <path d="M9 6V4h6v2" />
-                                                                            </svg>
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </div>
+                                                        {isMe && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => { setEditingId(msg.id); setEditContent(msg.content ?? ""); }}
+                                                                    className="w-6 h-6 flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--surface2)] cursor-pointer border-none bg-transparent transition-colors"
+                                                                    title="Edit message"
+                                                                    aria-label="Edit message"
+                                                                >
+                                                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => deleteMessage(msg.id)}
+                                                                    className="w-6 h-6 flex items-center justify-center text-red-400 hover:bg-red-400/10 rounded-lg cursor-pointer border-none bg-transparent transition-colors"
+                                                                    title="Delete message"
+                                                                    aria-label="Delete message"
+                                                                >
+                                                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                        <polyline points="3 6 5 6 21 6" />
+                                                                        <path d="M19 6l-1 14H6L5 6" />
+                                                                        <path d="M10 11v6M14 11v6" />
+                                                                        <path d="M9 6V4h6v2" />
+                                                                    </svg>
+                                                                </button>
+                                                            </>
                                                         )}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
@@ -904,6 +932,41 @@ export default function ChatPane({
                     </button>
                 </form>
             </div>
+
+            {/* ── Fullscreen image viewer ── */}
+            {selectedImage && (
+                <div
+                    className="fixed inset-0 bg-black/95 flex items-center justify-center z-50"
+                    onClick={() => setSelectedImage(null)}
+                    onKeyDown={e => e.key === "Escape" && setSelectedImage(null)}
+                    role="dialog"
+                    aria-label="Image fullscreen view"
+                >
+                    <button
+                        className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white border-none cursor-pointer hover:bg-white/20 transition-colors"
+                        onClick={() => setSelectedImage(null)}
+                        aria-label="Close image viewer"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                    </button>
+                    <img
+                        src={selectedImage}
+                        alt="Full size"
+                        className="max-w-[95vw] max-h-[95vh] object-contain rounded-xl"
+                        onClick={e => e.stopPropagation()}
+                    />
+                </div>
+            )}
+
+            {/* ── Upload error ── */}
+            {uploadError && (
+                <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-red-500/10 border-t border-red-500/20">
+                    <p className="text-xs text-red-400">{uploadError}</p>
+                    <button onClick={() => setUploadError(null)} aria-label="Dismiss error" className="text-red-400 text-base bg-none border-none cursor-pointer leading-none">×</button>
+                </div>
+            )}
         </div>
     );
 }

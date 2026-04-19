@@ -38,6 +38,8 @@ model User {
   preferences         UserPreferences?
   createdProjects     Project[]
   assignedTasks       ProjectTask[]
+  friendships         Friendship[] @relation("UserFriendships")
+  friendOf            Friendship[] @relation("FriendOf")
 }
 
 model Project {
@@ -220,6 +222,26 @@ enum MemberRole {
   MEMBER
 }
 
+enum FriendStatus {
+  REQUESTED
+  ADDED
+  BLOCKED
+}
+
+model Friendship {
+  id         String       @id @default(uuid())
+  userId     String
+  friendId   String
+  status     FriendStatus @default(REQUESTED)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  user   User @relation("UserFriendships", fields: [userId], references: [id])
+  friend User @relation("FriendOf", fields: [friendId], references: [id])
+
+  @@unique([userId, friendId])
+}
+
 model CommunityGroup {
   id          String   @id @default(uuid())
   name        String
@@ -227,6 +249,7 @@ model CommunityGroup {
   createdBy   String
   isPrivate   Boolean  @default(true)
   createdAt   DateTime @default(now())
+  type        String   @default("GROUP") // GROUP | DIRECT
 
   members  CommunityMember[]
   messages CommunityMessage[]

@@ -75,30 +75,6 @@ export default function CommunityShell({
     const [groupListTab, setGroupListTab] = useState<"chats" | "requests" | "discover">(
         (searchParams.get("tab") as "chats" | "requests" | "discover") ?? "chats"
     );
-   
-    // useEffect(() => {
-    //     const [tab, setTab] = useState<"chats" | "requests" | "discover">(initialTab ?? "chats");        const groupId = searchParams.get("groupId");
-
-    //     if (tab) setGroupListTab(tab);
-
-    //     if (groupId) {
-    //         setActiveGroupId(groupId);
-    //         // If it's a join request notification, open details pane on requests tab
-    //         if (tab === "requests" || searchParams.get("pendingTab")) {
-    //             setShowDetails(true);
-    //             setDetailsTab("pending");
-    //         }
-    //     }
-
-    //     // Clean URL after reading params
-    //     if (tab || groupId) {
-    //         router.replace("/community", { scroll: false });
-    //     }
-    // }, []);
-    
-    // Load role when active group changes
-
-    // ADD this useEffect instead:
     useEffect(() => {
         const tab = searchParams.get("tab") as "chats" | "requests" | "discover" | null;
         const groupId = searchParams.get("groupId");
@@ -107,7 +83,7 @@ export default function CommunityShell({
 
         if (groupId) {
             setActiveGroupId(groupId);
-            if (tab === "requests" || searchParams.get("pendingTab")) {
+            if (tab === "requests") {
                 setShowDetails(true);
                 setDetailsTab("pending");
             }
@@ -117,8 +93,8 @@ export default function CommunityShell({
             router.replace("/community", { scroll: false });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // intentionally empty — only run on mount
-
+    }, []);
+    
     useEffect(() => {
         if (!activeGroupId) return;
         fetch(`/api/community/groups/${activeGroupId}/members`)

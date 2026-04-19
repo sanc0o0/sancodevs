@@ -132,23 +132,27 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
 
                     {/* Mobile hamburger */}
                     {!minimal && (
-                        <button
-                            onClick={() => setDrawerOpen(true)}
-                            className="show-mobile"
-                            title="Open navigation menu"
-                            aria-label="Open navigation menu"
-                            style={{
-                                width: "34px", height: "34px", borderRadius: "8px",
-                                border: "0.5px solid var(--border)", background: "transparent",
-                                color: "var(--text)", cursor: "pointer",
-                                display: "none", alignItems: "center", justifyContent: "center",
-                            }}>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <line x1="3" y1="6" x2="21" y2="6" />
-                                <line x1="3" y1="12" x2="21" y2="12" />
-                                <line x1="3" y1="18" x2="21" y2="18" />
-                            </svg>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <NotificationBell /> 
+                            <button
+                                onClick={() => setDrawerOpen(true)}
+                                className="show-mobile"
+                                title="Open navigation menu"
+                                aria-label="Open navigation menu"
+                                style={{
+                                    width: "34px", height: "34px", borderRadius: "8px",
+                                    border: "0.5px solid var(--border)", background: "transparent",
+                                    color: "var(--text)", cursor: "pointer",
+                                    display: "none", alignItems: "center", justifyContent: "center",
+                                }}>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                    <line x1="3" y1="6" x2="21" y2="6" />
+                                    <line x1="3" y1="12" x2="21" y2="12" />
+                                    <line x1="3" y1="18" x2="21" y2="18" />
+                                </svg>
+                            </button>
+                        </div>
+
                     )}
                 </div>
             </nav>

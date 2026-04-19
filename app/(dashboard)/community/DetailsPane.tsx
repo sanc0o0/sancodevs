@@ -407,7 +407,7 @@ export default function DetailsPane({
 
                     {/* Members list */}
                     {tab === "members" && (
-                        <div className="flex flex-col">
+                        <div className="flex flex-col overflow-auto" style={{maxHeight:"280px"}}>
                             {membersLoading ? (
                                 <p className="text-xs text-[var(--muted)] py-4 text-center">Loading...</p>
                             ) : members.length === 0 ? (
@@ -443,7 +443,7 @@ export default function DetailsPane({
 
                     {/* Pending requests */}
                     {tab === "pending" && isAdmin && (
-                        <div className="flex flex-col">
+                        <div className="flex flex-col overflow-auto" style={ { maxHeight: "208px"}}>
                             {pending.length === 0 ? (
                                 <p className="text-xs text-[var(--muted)] py-4 text-center">No pending requests</p>
                             ) : (
