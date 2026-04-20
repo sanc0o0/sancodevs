@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+
+  <!-- Rounded background -->
+  <rect width="500" height="500" rx="100" ry="72" fill="#e8e8e8"/>
+
+  <!-- S — top left -->
+  <text
+    x="82"
+    y="282"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-weight="800"
+    font-size="200"
+    fill="#111111"
+  >S</text>
+
+  <!-- Bar — top right (sits beside S, vertically centered with S body) -->
+  <rect x="258" y="130" width="182" height="30" rx="0" fill="#111111"/>
+
+  <!-- Bar — bottom left (sits left of C, vertically centered with C body) -->
+  <rect x="60" y="350" width="182" height="30" rx="0" fill="#111111"/>
+
+  <!-- C — bottom right -->
+  <text
+    x="258"
+    y="380"
+    font-family="Montserrat,  sans-serif"
+    font-weight="800"
+    font-size="200"
+    fill="#111111"
+  >C</text>
+
+</svg>

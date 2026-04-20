@@ -38,8 +38,13 @@ model User {
   preferences         UserPreferences?
   createdProjects     Project[]
   assignedTasks       ProjectTask[]
-  friendships         Friendship[] @relation("UserFriendships")
-  friendOf            Friendship[] @relation("FriendOf")
+  sentRequests        FriendRequest[] @relation("SentRequests")
+  receivedRequests    FriendRequest[] @relation("ReceivedRequests")
+  user1Friendships    Friendship[]    @relation("User1Friendships")
+  user2Friendships    Friendship[]    @relation("User2Friendships")
+  blocks              Block[]         @relation("Blocks")
+  blockedBy           Block[]         @relation("BlockedBy")
+
 }
 
 model Project {
@@ -228,18 +233,40 @@ enum FriendStatus {
   BLOCKED
 }
 
+model FriendRequest {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+}
+
 model Friendship {
-  id         String       @id @default(uuid())
-  userId     String
-  friendId   String
-  status     FriendStatus @default(REQUESTED)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id        String   @id @default(uuid())
+  user1Id   String
+  user2Id   String
+  createdAt DateTime @default(now())
 
-  user   User @relation("UserFriendships", fields: [userId], references: [id])
-  friend User @relation("FriendOf", fields: [friendId], references: [id])
+  user1 User @relation("User1Friendships", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2 User @relation("User2Friendships", fields: [user2Id], references: [id], onDelete: Cascade)
 
-  @@unique([userId, friendId])
+  @@unique([user1Id, user2Id])
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
 }
 
 model CommunityGroup {

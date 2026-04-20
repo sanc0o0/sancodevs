@@ -13,20 +13,38 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     }
 
-    const existing = await prisma.friendship.findUnique({
-        where: { userId_friendId: { userId: session.user.id, friendId: targetUserId } },
+    // Check if blocked
+    const blocked = await prisma.block.findFirst({
+        where: {
+            OR: [
+                { blockerId: session.user.id, blockedId: targetUserId },
+                { blockerId: targetUserId, blockedId: session.user.id },
+            ],
+        },
     });
-    if (existing) return NextResponse.json({ status: existing.status }, { status: 409 });
+    if (blocked) return NextResponse.json({ error: "Cannot send request." }, { status: 403 });
 
-    await prisma.friendship.create({
-        data: { userId: session.user.id, friendId: targetUserId, status: "REQUESTED" },
+    // Check if already friends
+    const [u1, u2] = [session.user.id, targetUserId].sort();
+    const alreadyFriends = await prisma.friendship.findUnique({
+        where: { user1Id_user2Id: { user1Id: u1, user2Id: u2 } },
+    });
+    if (alreadyFriends) return NextResponse.json({ error: "Already friends." }, { status: 409 });
+
+    // Check existing request
+    const existing = await prisma.friendRequest.findUnique({
+        where: { senderId_receiverId: { senderId: session.user.id, receiverId: targetUserId } },
+    });
+    if (existing) return NextResponse.json({ status: "REQUESTED" }, { status: 409 });
+
+    await prisma.friendRequest.create({
+        data: { senderId: session.user.id, receiverId: targetUserId },
     });
 
-    const target = await prisma.user.findUnique({ where: { id: targetUserId }, select: { name: true } });
     const notif = await prisma.notification.create({
         data: {
             userId: targetUserId,
-            title: "Friend request",
+            title: "New friend request",
             body: `${session.user.name ?? "Someone"} sent you a friend request.`,
             href: `/user/${session.user.id}`,
         },

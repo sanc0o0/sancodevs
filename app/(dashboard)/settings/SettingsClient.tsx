@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import FriendsTab from "./FriendsTab";
 
 const TECH_OPTIONS = [
     "Next.js", "React", "TypeScript", "JavaScript", "Node.js", "Python",
@@ -30,7 +31,7 @@ interface Props {
 
 export default function SettingsClient({ user }: Props) {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"notifications" | "account">("notifications");
+    const [activeTab, setActiveTab] = useState<"notifications" | "account" | "friends">("notifications");
     const [prefTechs, setPrefTechs] = useState<string[]>([]);
     const [prefTopics, setPrefTopics] = useState<string[]>([]);
     const [techSearch, setTechSearch] = useState("");
@@ -101,7 +102,7 @@ export default function SettingsClient({ user }: Props) {
 
             {/* Tabs */}
             <div style={{ display: "flex", gap: "4px", marginBottom: "1.5rem" }}>
-                {(["notifications", "account"] as const).map(tab => (
+                {(["notifications", "account", "friends" ] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)} style={{
                         padding: "7px 16px", borderRadius: "7px", fontSize: "13px",
                         border: `0.5px solid ${activeTab === tab ? "var(--accent)" : "var(--border)"}`,
@@ -180,6 +181,8 @@ export default function SettingsClient({ user }: Props) {
                 </>
             )}
 
+            {activeTab === "friends" && <FriendsTab />}
+
             {activeTab === "account" && (
                 <>
                     {/* Account info */}
@@ -201,6 +204,8 @@ export default function SettingsClient({ user }: Props) {
                         </div>
                     </div>
 
+                    {/* or just add friends list here in div with a drop down and scroll feat */}
+                    
                     {/* Danger zone */}
                     <div style={{ ...sectionStyle, border: "0.5px solid #e24b4a33" }}>
                         <div style={{ ...headerStyle, borderBottom: "0.5px solid #e24b4a33" }}>

@@ -131,19 +131,19 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
                     )}
 
                     {/* Mobile hamburger */}
+                    {/* Mobile hamburger — notification bell only shows here on mobile */}
                     {!minimal && (
-                        <div className="flex items-center gap-2">
-                            <NotificationBell /> 
+                        <div className="show-mobile" style={{ display: "none", alignItems: "center", gap: "6px" }}>
+                            <NotificationBell />
                             <button
                                 onClick={() => setDrawerOpen(true)}
-                                className="show-mobile"
                                 title="Open navigation menu"
                                 aria-label="Open navigation menu"
                                 style={{
                                     width: "34px", height: "34px", borderRadius: "8px",
                                     border: "0.5px solid var(--border)", background: "transparent",
                                     color: "var(--text)", cursor: "pointer",
-                                    display: "none", alignItems: "center", justifyContent: "center",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
                                 }}>
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                     <line x1="3" y1="6" x2="21" y2="6" />
@@ -152,7 +152,6 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
                                 </svg>
                             </button>
                         </div>
-
                     )}
                 </div>
             </nav>

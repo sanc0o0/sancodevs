@@ -9,25 +9,25 @@ export async function POST(req: Request) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { senderId, action } = await req.json();
-    // action: "accept" | "reject"
-
     if (!senderId || !["accept", "reject"].includes(action)) {
         return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     }
 
-    // Find the request where senderId sent TO current user
-    const friendship = await prisma.friendship.findUnique({
-        where: { userId_friendId: { userId: senderId, friendId: session.user.id } },
+    const request = await prisma.friendRequest.findUnique({
+        where: { senderId_receiverId: { senderId, receiverId: session.user.id } },
+    });
+    if (!request) return NextResponse.json({ error: "No request found." }, { status: 404 });
+
+    // Delete the request regardless of action
+    await prisma.friendRequest.delete({
+        where: { senderId_receiverId: { senderId, receiverId: session.user.id } },
     });
 
-    if (!friendship || friendship.status !== "REQUESTED") {
-        return NextResponse.json({ error: "No pending request found." }, { status: 404 });
-    }
-
     if (action === "accept") {
-        await prisma.friendship.update({
-            where: { userId_friendId: { userId: senderId, friendId: session.user.id } },
-            data: { status: "ADDED" },
+        // Create friendship — always sort IDs
+        const [user1Id, user2Id] = [senderId, session.user.id].sort();
+        await prisma.friendship.create({
+            data: { user1Id, user2Id },
         });
 
         const notif = await prisma.notification.create({
@@ -39,12 +39,6 @@ export async function POST(req: Request) {
             },
         });
         await pusher.trigger(`user-${senderId}`, "notification:new", notif);
-
-    } else {
-        // Reject — delete the row
-        await prisma.friendship.delete({
-            where: { userId_friendId: { userId: senderId, friendId: session.user.id } },
-        });
     }
 
     return NextResponse.json({ success: true, action });

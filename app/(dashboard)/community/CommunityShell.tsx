@@ -65,7 +65,7 @@ export default function CommunityShell({
     const router = useRouter();
 
     const [activeGroupId, setActiveGroupId] = useState<string | null>(
-        searchParams.get("groupId") ?? myGroups[0]?.id ?? null
+        searchParams.get("groupId") ?? null
     );
     const [showDetails, setShowDetails] = useState(false);
     const [detailsTab, setDetailsTab] = useState<"members" | "pending">("members");
@@ -137,7 +137,7 @@ export default function CommunityShell({
         <div
             style={{
                 position: "fixed",
-                top: "54px",    // navbar height
+                top: "60px",    // navbar height
                 left: "200px",  // sidebar width — 0 on mobile
                 right: 0,
                 bottom: 0,
