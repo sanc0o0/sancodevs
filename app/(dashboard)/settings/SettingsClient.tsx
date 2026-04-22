@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import FriendsTab from "./FriendsTab";
+import BlockedUsersTab from "./BlockedUsersTab";
 
 const TECH_OPTIONS = [
     "Next.js", "React", "TypeScript", "JavaScript", "Node.js", "Python",
@@ -31,7 +32,7 @@ interface Props {
 
 export default function SettingsClient({ user }: Props) {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"notifications" | "account" | "friends">("notifications");
+    const [activeTab, setActiveTab] = useState<"notifications" | "account" | "friends" | "privacy">("notifications");
     const [prefTechs, setPrefTechs] = useState<string[]>([]);
     const [prefTopics, setPrefTopics] = useState<string[]>([]);
     const [techSearch, setTechSearch] = useState("");
@@ -96,13 +97,13 @@ export default function SettingsClient({ user }: Props) {
     };
 
     return (
-        <div style={{ maxWidth: "680px" }}>
+        <div style={{ maxWidth: "680px", padding: "20px"}}>
             <div style={{ width: "28px", height: "2px", background: "var(--accent)", marginBottom: "1rem" }} />
             <h1 style={{ fontSize: "21px", fontWeight: 500, color: "var(--text)", marginBottom: "2rem" }}>Settings</h1>
 
             {/* Tabs */}
             <div style={{ display: "flex", gap: "4px", marginBottom: "1.5rem" }}>
-                {(["notifications", "account", "friends" ] as const).map(tab => (
+                {(["notifications", "account", "friends" , "privacy"] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)} style={{
                         padding: "7px 16px", borderRadius: "7px", fontSize: "13px",
                         border: `0.5px solid ${activeTab === tab ? "var(--accent)" : "var(--border)"}`,
@@ -182,6 +183,8 @@ export default function SettingsClient({ user }: Props) {
             )}
 
             {activeTab === "friends" && <FriendsTab />}
+
+            {activeTab === "privacy" && <BlockedUsersTab />}
 
             {activeTab === "account" && (
                 <>

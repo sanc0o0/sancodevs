@@ -7,11 +7,13 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { groupId, isTyping } = await req.json();
+    const { groupId, isTyping } = await req.json() as { groupId: string; isTyping: boolean };
+
+    if (!groupId) return NextResponse.json({ error: "groupId required." }, { status: 400 });
 
     await pusher.trigger(`group-${groupId}`, isTyping ? "typing:start" : "typing:stop", {
         userId: session.user.id,
-        userName: session.user.name,
+        userName: session.user.name ?? null,
     });
 
     return NextResponse.json({ success: true });

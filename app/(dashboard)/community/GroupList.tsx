@@ -12,6 +12,7 @@ type GroupSummary = {
     pinned: boolean;
     role: "ADMIN" | "MEMBER";
     lastMessage: { senderName: string | null; content: string | null; createdAt: string } | null;
+    unreadCount?: number;
 };
 
 type RequestSummary = {
@@ -31,14 +32,24 @@ interface Props {
     activeGroupId: string | null;
     onSelectGroup: (id: string) => void;
     onGroupCreated: (g: GroupSummary) => void;
-    onRequestResponded: (groupId: string) => void;
+    // onRequestResponded: (groupId: string) => void;
+    onRequestResponded: (groupId: string, moveToDiscover?: { id: string; name: string; description: string | null; isPrivate: boolean; memberCount: number }) => void;
     currentUserId: string;
     initialTab?: "chats" | "requests" | "discover";
+    unreadCounts: Record<string, number>;
 }
 
 export default function GroupList({
-    groups, requests, discoverGroups, activeGroupId,
-    onSelectGroup, onGroupCreated, onRequestResponded, currentUserId, initialTab
+    groups, 
+    requests, 
+    discoverGroups, 
+    activeGroupId,
+    onSelectGroup, 
+    onGroupCreated, 
+    onRequestResponded, 
+    currentUserId, 
+    initialTab,
+    unreadCounts
 }: Props) {
     const [search, setSearch] = useState("");
     const [tab, setTab] = useState<"chats" | "requests" | "discover">(initialTab ?? "chats");    const [creating, setCreating] = useState(false);
@@ -247,7 +258,15 @@ export default function GroupList({
                             <div>
                                 <p className="text-[9px] text-[var(--muted)] uppercase tracking-wider px-4 py-2">Pinned</p>
                                 {pinned.map(g => (
-                                    <GroupRow key={g.id} group={g} active={activeGroupId === g.id} onSelect={() => onSelectGroup(g.id)} timeAgo={timeAgo} getColor={getColor} />
+                                    <GroupRow 
+                                        key={g.id} 
+                                        group={g} 
+                                        active={activeGroupId === g.id} 
+                                        onSelect={() => onSelectGroup(g.id)} 
+                                        timeAgo={timeAgo} 
+                                        getColor={getColor} 
+                                        unreadCount={unreadCounts[g.id] ?? 0}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -255,7 +274,15 @@ export default function GroupList({
                             <div>
                                 {pinned.length > 0 && <p className="text-[9px] text-[var(--muted)] uppercase tracking-wider px-4 py-2">All</p>}
                                 {rest.map(g => (
-                                    <GroupRow key={g.id} group={g} active={activeGroupId === g.id} onSelect={() => onSelectGroup(g.id)} timeAgo={timeAgo} getColor={getColor} />
+                                    <GroupRow 
+                                        key={g.id} 
+                                        group={g} 
+                                        active={activeGroupId === g.id} 
+                                        onSelect={() => onSelectGroup(g.id)} 
+                                        timeAgo={timeAgo} 
+                                        getColor={getColor} 
+                                        unreadCount={unreadCounts[g.id] ?? 0}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -385,10 +412,11 @@ export default function GroupList({
     );
 }
 
-function GroupRow({ group, active, onSelect, timeAgo, getColor }: {
+function GroupRow({ group, active, onSelect, timeAgo, getColor, unreadCount}: {
     group: GroupSummary; active: boolean; onSelect: () => void;
     timeAgo: (s: string) => string;
     getColor: (s: string) => string;
+    unreadCount: number;
 }) {
     const preview = group.lastMessage
         ? `${group.lastMessage.senderName?.split(" ")[0] ?? ""}: ${group.lastMessage.content?.slice(0, 40) ?? "📎 Media"}${(group.lastMessage.content?.length ?? 0) > 40 ? "..." : ""}`
@@ -421,9 +449,22 @@ function GroupRow({ group, active, onSelect, timeAgo, getColor }: {
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
                     <p className="text-sm font-medium text-[var(--text)] truncate">{group.name}</p>
-                    {group.lastMessage && (
-                        <span className="text-[10px] text-[var(--muted)] flex-shrink-0">{timeAgo(group.lastMessage.createdAt)}</span>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {group.lastMessage && (
+                            <span className="text-[10px] text-[var(--muted)]">{timeAgo(group.lastMessage.createdAt)}</span>
+                        )}
+                        {unreadCount > 0 && (
+                            <span style={{
+                                minWidth: "18px", height: "18px", borderRadius: "999px",
+                                background: "#ef4444", color: "white",
+                                fontSize: "10px", fontWeight: 600,
+                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                padding: "0 4px",
+                            }}>
+                                {unreadCount > 4 ? "4+" : unreadCount}
+                            </span>
+                        )}
+                    </div>
                 </div>
                 <p className="text-xs text-[var(--muted)] truncate mt-0.5">{preview}</p>
             </div>

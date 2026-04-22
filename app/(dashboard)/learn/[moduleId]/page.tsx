@@ -16,39 +16,61 @@ export default async function ModulePage({
     const session = await getServerSession(authOptions);
     if (!session) redirect("/login");
 
-    const { moduleId } = await params;
-    const moduleIndex = parseInt(moduleId);
-    if (isNaN(moduleIndex)) notFound();
-
     const onboarding = await prisma.userOnboarding.findUnique({
         where: { userId: session.user.id },
     });
     if (!onboarding) redirect("/onboarding");
 
-    const path = PATHS[onboarding.pathId];
-    const mod = path?.modules[moduleIndex];
+    const { moduleId } = await params;
+
+    let resolvedPathId: string;
+    let moduleIndex: number;
+
+    const lastHyphen = moduleId.lastIndexOf("-");
+
+    if (lastHyphen === -1) {
+        // Plain number like "1" — use user's onboarding path
+        moduleIndex = parseInt(moduleId);
+        if (isNaN(moduleIndex)) notFound();
+        resolvedPathId = onboarding.pathId;
+    } else {
+        // Format: "pathId-moduleIndex" like "webapp-0"
+        resolvedPathId = moduleId.slice(0, lastHyphen);
+        moduleIndex = parseInt(moduleId.slice(lastHyphen + 1));
+        if (isNaN(moduleIndex)) notFound();
+        // If pathId not found in PATHS, fall back to onboarding path
+        if (!PATHS[resolvedPathId]) {
+            resolvedPathId = onboarding.pathId;
+        }
+    }
+
+    const path = PATHS[resolvedPathId];
+    if (!path) notFound();
+
+    const mod = path.modules[moduleIndex];
     if (!mod) notFound();
 
     const progress = await prisma.userProgress.findMany({
-        where: { userId: session.user.id, pathId: onboarding.pathId },
+        where: { userId: session.user.id, pathId: resolvedPathId },
     });
 
     const completedIndexes = new Set(progress.map(p => p.moduleIndex));
     const isDone = completedIndexes.has(moduleIndex);
     const isLocked = moduleIndex > completedIndexes.size;
-    const nextIndex = moduleIndex + 1 < path.modules.length ? moduleIndex + 1 : null;
-    const prevIndex = moduleIndex > 0 ? moduleIndex - 1 : null;
 
     if (isLocked) redirect("/learn");
 
-    const pathContent = CONTENT[onboarding.pathId] ?? [];
+    const pathContent = CONTENT[resolvedPathId] ?? [];
     const content = pathContent.find(c => c.moduleIndex === moduleIndex);
 
     return (
-        <div style={{ maxWidth: "720px" }}>
+        <div style={{ maxWidth: "720px", padding: "20px" }}>
             {/* Breadcrumb */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2rem" }}>
-                <Link href="/learn" style={{ fontSize: "12px", color: "var(--muted)", textDecoration: "none" }}>
+                <Link
+                    href="/learn"
+                    style={{ fontSize: "12px", color: "var(--muted)", textDecoration: "none" }}
+                >
                     {path.label}
                 </Link>
                 <span style={{ fontSize: "12px", color: "var(--muted)" }}>→</span>
@@ -120,7 +142,7 @@ export default async function ModulePage({
             <ModuleActions
                 moduleId={moduleId}
                 moduleIndex={moduleIndex}
-                pathId={onboarding.pathId}
+                pathId={resolvedPathId}
                 totalModules={path.modules.length}
                 alreadyCompleted={isDone}
                 hasContent={!!content}

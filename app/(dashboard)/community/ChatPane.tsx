@@ -60,6 +60,7 @@ export default function ChatPane({
     const [notAllowed, setNotAllowed] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const blockedUserIdsRef = useRef<Set<string>>(new Set());
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -169,6 +170,8 @@ export default function ChatPane({
                 const rxns: Record<string, Reaction[]> = {};
 
                 data.forEach(m => {
+                    // skip blocked user
+                    if (blockedUserIdsRef.current.has(m.userId)) return;
                     map.set(m.id, m);
                     rxns[m.id] = m.reactions ?? [];
                 });
@@ -207,6 +210,8 @@ export default function ChatPane({
                 sentIdsRef.current.delete(msg.id);
                 return;
             }
+            // filter messages from blocked users
+            if (blockedUserIdsRef.current.has(msg.userId)) return;
 
             // Check if we already have this message (dedup)
             setMsgMap(prev => {
@@ -253,6 +258,9 @@ export default function ChatPane({
 
         channel.bind("typing:start", (data: TypingUser) => {
             if (data.userId === currentUserId) return;
+
+            // do not show blocked users typing status
+            if(blockedUserIdsRef.current.has(data.userId)) return;
             setTypingUsers(prev =>
                 prev.some(u => u.userId === data.userId) ? prev : [...prev, data]
             );
@@ -293,6 +301,13 @@ export default function ChatPane({
             pusher.unsubscribe(`group-${group.id}`);
         };
     }, [group.id, currentUserId]);
+
+    useEffect(() => {
+        fetch("/api/friends/blocked-ids")
+            .then(r => r.ok ? r.json() : { ids: [] })
+            .then(d => { blockedUserIdsRef.current = new Set(d.ids ?? []); })
+            .catch(() => { });
+    }, [group.id]);
 
     // ── Debounced seen receipts ────────────────────────────────────────────
     useEffect(() => {

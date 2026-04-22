@@ -86,7 +86,7 @@ export default async function CommunityPage() {
                         memberCount: r.group._count.members,
                     },
                 }))}
-                discoverGroups={discoverGroups.map(g => ({
+                myDiscoverGroups={discoverGroups.map(g => ({
                     id: g.id,
                     name: g.name,
                     description: g.description,

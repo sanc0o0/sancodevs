@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import GroupList from "./GroupList";
 import ChatPane from "./ChatPane";
 import DetailsPane from "./DetailsPane";
+import { getPusherClient } from "@/lib/pusher-client";
 
 
 type GroupSummary = {
@@ -46,7 +47,7 @@ type RequestSummary = {
 interface Props {
     myGroups: GroupSummary[];
     myRequests: RequestSummary[];
-    discoverGroups: DiscoverGroup[];
+    myDiscoverGroups: DiscoverGroup[];
     currentUserId: string;
     currentUserName: string;
     currentUserImage: string | null;
@@ -56,7 +57,7 @@ interface Props {
 export default function CommunityShell({
     myGroups,
     myRequests,
-    discoverGroups,
+    myDiscoverGroups,
     currentUserId,
     currentUserName,
     currentUserImage,
@@ -67,48 +68,133 @@ export default function CommunityShell({
     const [activeGroupId, setActiveGroupId] = useState<string | null>(
         searchParams.get("groupId") ?? null
     );
-    const [showDetails, setShowDetails] = useState(false);
-    const [detailsTab, setDetailsTab] = useState<"members" | "pending">("members");
     const [groups, setGroups] = useState<GroupSummary[]>(myGroups);
     const [memberRoles, setMemberRoles] = useState<Record<string, "ADMIN" | "MEMBER">>({});
     const [requests, setRequests] = useState<RequestSummary[]>(myRequests);
+    const [discoverGroups, setDiscoverGroups] = useState(myDiscoverGroups);
     const [groupListTab, setGroupListTab] = useState<"chats" | "requests" | "discover">(
         (searchParams.get("tab") as "chats" | "requests" | "discover") ?? "chats"
     );
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+    const [detailsTab, setDetailsTab] = useState<"members" | "pending">(
+        searchParams.get("tab") === "requests" && searchParams.get("groupId")
+            ? "pending"
+            : "members"
+    );
+    const [showDetails, setShowDetails] = useState(
+        !!(searchParams.get("tab") === "requests" && searchParams.get("groupId"))
+    );
+
+    // separate effect ONLY for URL cleanup (no setState):
     useEffect(() => {
-        const tab = searchParams.get("tab") as "chats" | "requests" | "discover" | null;
+        const tab = searchParams.get("tab");
         const groupId = searchParams.get("groupId");
-
-        if (tab) setGroupListTab(tab);
-
-        if (groupId) {
-            setActiveGroupId(groupId);
-            if (tab === "requests") {
-                setShowDetails(true);
-                setDetailsTab("pending");
-            }
-        }
-
         if (tab || groupId) {
             router.replace("/community", { scroll: false });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, []); // mount only — just cleans the URL
     
+
+    //useEffect for group-level Pusher subscriptions:
     useEffect(() => {
-        if (!activeGroupId) return;
-        fetch(`/api/community/groups/${activeGroupId}/members`)
-            .then(r => r.ok ? r.json() : [])
-            .then((members: { userId: string; role: "ADMIN" | "MEMBER" }[]) => {
-                const me = members.find(m => m.userId === currentUserId);
-                if (me) {
-                    setMemberRoles(prev => ({ ...prev, [activeGroupId]: me.role }));
-                }
-            })
-            .catch(() => { });
-    }, [activeGroupId, currentUserId]);
+        const pusher = getPusherClient();
+
+        // Subscribe to all groups the user is in
+        const channels = groups.map(g => {
+            const channel = pusher.subscribe(`group-${g.id}`);
+
+            channel.bind("message:new", (msg: { userId: string; groupId?: string }) => {
+                const groupId = g.id;
+                // Only count if not the active group and not from self
+                if (groupId === activeGroupId) return;
+                if (msg.userId === currentUserId) return;
+
+                setUnreadCounts(prev => ({
+                    ...prev,
+                    [groupId]: Math.min((prev[groupId] ?? 0) + 1, 99),
+                }));
+
+                // Also update lastMessage preview in groups list
+                setGroups(prev => prev.map(gr =>
+                    gr.id === groupId
+                        ? { ...gr, lastMessage: { senderName: null, content: null, createdAt: new Date().toISOString() } }
+                        : gr
+                ));
+            });
+
+            return { groupId: g.id, channel };
+        });
+
+        return () => {
+            channels.forEach(({ groupId }) => {
+                pusher.unsubscribe(`group-${groupId}`);
+            });
+        };
+    }, [groups.length, activeGroupId, currentUserId]);
+
+    // Clear unread when group is opened:
+    function handleSelectGroup(id: string) {
+        setActiveGroupId(id);
+        setShowDetails(false);
+        setUnreadCounts(prev => ({ ...prev, [id]: 0 }));
+    }
 
     const activeGroup = groups.find(g => g.id === activeGroupId) ?? null;
+    useEffect(() => {
+        const pusher = getPusherClient();
+        const channel = pusher.subscribe(`user-${currentUserId}`);
+
+        // When admin approves → move from requests to chats
+        channel.bind("join:accepted", ({ groupId, groupName }: { groupId: string; groupName: string }) => {
+            setRequests(prev => {
+                const req = prev.find(r => r.groupId === groupId);
+                if (req) {
+                    // Add to groups
+                    setGroups(g => [...g, {
+                        id: req.groupId,
+                        name: req.group.name,
+                        description: req.group.description,
+                        isPrivate: req.group.isPrivate,
+                        memberCount: req.group.memberCount + 1,
+                        muted: false,
+                        pinned: false,
+                        role: "MEMBER" as const,
+                        lastMessage: null,
+                    }]);
+                }
+                return prev.filter(r => r.groupId !== groupId);
+            });
+        });
+
+        // When admin rejects → remove from requests, move back to discover if public
+        channel.bind("join:rejected", ({ groupId, groupName }: { groupId: string; groupName: string }) => {
+            setRequests(prev => {
+                const req = prev.find(r => r.groupId === groupId);
+                if (req && !req.group.isPrivate) {
+                    // Move back to discover
+                    setDiscoverGroups(d => {
+                        if (d.some(g => g.id === groupId)) return d;
+                        return [...d, {
+                            id: req.groupId,
+                            name: req.group.name,
+                            description: req.group.description,
+                            isPrivate: false,
+                            memberCount: req.group.memberCount,
+                        }];
+                    });
+                }
+                return prev.filter(r => r.groupId !== groupId);
+            });
+        });
+
+        return () => {
+            channel.unbind_all();
+            pusher.unsubscribe(`user-${currentUserId}`);
+        };
+    }, [activeGroup, currentUserId]);
+
 
     function handleGroupCreated(newGroup: GroupSummary) {
         setGroups(prev => [newGroup, ...prev]);
@@ -128,11 +214,16 @@ export default function CommunityShell({
         );
     }
 
-    function handleRequestResponded(groupId: string) {
-        setRequests(prev => prev.filter((r: RequestSummary) => r.groupId !== groupId));
+    function handleRequestResponded(groupId: string, moveToDiscover?: DiscoverGroup) {
+        setRequests(prev => prev.filter(r => r.groupId !== groupId));
+        if (moveToDiscover) {
+            setDiscoverGroups(prev => {
+                if (prev.some(g => g.id === moveToDiscover.id)) return prev;
+                return [...prev, moveToDiscover]
+            })
+        }
     }
 
-    // In CommunityShell.tsx — replace the return:
     return (
         <div
             style={{
@@ -159,10 +250,12 @@ export default function CommunityShell({
                     requests={requests}
                     discoverGroups={discoverGroups}
                     activeGroupId={activeGroupId}
-                    onSelectGroup={id => { 
-                        setActiveGroupId(id); 
-                        setShowDetails(false); 
-                    }}
+                    // onSelectGroup={id => { 
+                    //     setActiveGroupId(id); 
+                    //     setShowDetails(false); 
+                    // }}
+                    unreadCounts={unreadCounts}
+                    onSelectGroup={handleSelectGroup}   //  new handler
                     onGroupCreated={handleGroupCreated}
                     onRequestResponded={handleRequestResponded}
                     currentUserId={currentUserId}

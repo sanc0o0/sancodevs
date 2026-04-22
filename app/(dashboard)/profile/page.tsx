@@ -25,7 +25,7 @@ export default async function ProfilePage() {
         ?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) ?? "?";
 
     return (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem", maxWidth: "1100px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem", maxWidth: "1100px", padding:"20px" }}>
 
             {/* Two column layout on desktop */}
             <div className="profile-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(0,1fr)", gap: "1rem", alignItems: "start" }}>

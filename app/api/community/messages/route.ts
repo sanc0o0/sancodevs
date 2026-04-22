@@ -3,6 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { pusher } from "@/lib/pusher";
+import type { CommunityMessage, User, MessageReceipt, MessageReaction } from "@prisma/client";
+
+type MessageWithRelations = CommunityMessage & {
+    user: Pick<User, "id" | "name" | "image">;
+    receipts: Pick<MessageReceipt, "userId">[];
+    reactions: Pick<MessageReaction, "userId" | "emoji">[];
+};
 
 export async function GET(req: Request) {
     const session = await getServerSession(authOptions);
@@ -19,8 +26,29 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Not a member." }, { status: 403 });
     }
 
+    // Get all blocked user IDs (both directions)
+    const blockRelations = await prisma.block.findMany({
+        where: {
+            OR: [
+                { blockerId: session.user.id },
+                { blockedId: session.user.id },
+            ],
+        },
+        select: { blockerId: true, blockedId: true },
+    });
+
+    const blockedUserIds = blockRelations.map(b =>
+        b.blockerId === session.user.id ? b.blockedId : b.blockerId
+    );
+
     const messages = await prisma.communityMessage.findMany({
-        where: { groupId },
+        where: {
+            groupId,
+            // Soft block: hide messages from blocked users
+            ...(blockedUserIds.length > 0 ? {
+                userId: { notIn: blockedUserIds },
+            } : {}),
+        },
         include: {
             user: { select: { id: true, name: true, image: true } },
             receipts: { select: { userId: true } },
@@ -47,6 +75,17 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Not a member." }, { status: 403 });
     }
 
+    const blockers = await prisma.block.findMany({
+        where: {
+            blockedId: session.user.id,
+        },
+        select: {
+            blockerId: true,
+        },
+    });
+
+    const blockedUserIds = blockers.map(b => b.blockerId);
+
     const message = await prisma.communityMessage.create({
         data: {
             groupId,
@@ -71,13 +110,19 @@ export async function POST(req: Request) {
     if (content) {
         const mentions = content.match(/@(\w+)/g) ?? [];
         if (mentions.length > 0) {
+
             const names = mentions.map((m: string) => m.slice(1));
+
             const mentionedUsers = await prisma.user.findMany({
                 where: { name: { in: names } },
                 select: { id: true },
             });
+
             for (const u of mentionedUsers) {
                 if (u.id === session.user.id) continue;
+
+                if (blockedUserIds.includes(u.id)) continue;
+
                 const notif = await prisma.notification.create({
                     data: {
                         userId: u.id,
@@ -94,12 +139,12 @@ export async function POST(req: Request) {
     return NextResponse.json(formatted, { status: 201 });
 }
 
-function formatMessage(m: any) {
+function formatMessage(m: MessageWithRelations) {
     return {
         ...m,
         createdAt: m.createdAt.toISOString(),
         reactions: Object.values(
-            (m.reactions ?? []).reduce((acc: any, r: any) => {
+            (m.reactions ?? []).reduce((acc, r) => {
                 if (!acc[r.emoji]) acc[r.emoji] = { emoji: r.emoji, userIds: [] };
                 acc[r.emoji].userIds.push(r.userId);
                 return acc;

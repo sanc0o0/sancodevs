@@ -14,7 +14,7 @@ export default async function ProjectsPage() {
     });
 
     return (
-        <ProjectsClient
+        <ProjectsClient 
             initialProjects={projects.map(p => ({
                 ...p,
                 createdAt: p.createdAt.toISOString(),

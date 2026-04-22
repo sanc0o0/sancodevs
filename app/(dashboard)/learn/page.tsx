@@ -26,7 +26,7 @@ export default async function LearnPage() {
     const percent = Math.round((completedCount / total) * 100);
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="max-w-6xl mx-auto p-5 grid gap-6 lg:grid-cols-[2fr_1fr]">
 
             {/* LEFT — MODULES */}
             <div>
@@ -48,7 +48,7 @@ export default async function LearnPage() {
                         return (
                             <Link
                                 key={i}
-                                href={locked ? "#" : `/learn/${i}`}
+                                href={locked ? "#" : `/learn/${onboarding.pathId}-${i}`}
                                 className={`
                                     flex items-center gap-4 p-4 rounded-xl border transition
                                     ${done ? "border-[var(--accent)]" : "border-[var(--border)]"}
@@ -115,7 +115,7 @@ export default async function LearnPage() {
                         <p className="text-sm font-medium mb-3">Continue learning</p>
 
                         <Link
-                            href={`/learn/${completedCount}`}
+                            href={`/learn/${onboarding.pathId}-${completedCount}`}
                             className="
                                     group flex items-center justify-between
                                     px-4 py-2.5 rounded-lg

@@ -146,7 +146,8 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
         <div style={{
             height: "calc(100vh - 54px)", // account for navbar
             display: "flex",
-            overflow: "hidden"
+            overflow: "hidden",
+            padding: "20px"
         }}>
             <div className="flex flex-col gap-4 h-full w-full">
                 <div className="flex flex-col gap-4 flex-shrink-0">
@@ -379,7 +380,7 @@ function FilterPanel({ filters, toggleFilter, expandedSections, toggleSection }:
     toggleSection: (key: string) => void;
 }) {
     return (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 ">
             <FilterSection title="Difficulty" expanded={expandedSections.difficulty} onToggle={() => toggleSection("difficulty")}>
                 {FILTERS.difficulty.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.difficulty.includes(v)} onChange={() => toggleFilter("difficulty", v)} />

@@ -33,7 +33,7 @@ export default async function DashboardPage() {
                 gap: "1.25rem",
                 maxWidth: "1100px",
                 margin: "0 auto",
-                padding: "1rem",
+                padding: "20px",
             }}
             className="dashboard-grid"
         >
