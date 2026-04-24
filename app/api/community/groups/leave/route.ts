@@ -11,16 +11,21 @@ export async function POST(req: Request) {
     const { groupId } = await req.json();
     if (!groupId) return NextResponse.json({ error: "groupId required" }, { status: 400 });
 
+    // ← FETCH the group first
+    const group = await prisma.communityGroup.findUnique({
+        where: { id: groupId },
+        select: { id: true, name: true, isPrivate: true },
+    });
+    if (!group) return NextResponse.json({ error: "Group not found." }, { status: 404 });
+
     const member = await prisma.communityMember.findUnique({
         where: { groupId_userId: { groupId, userId: session.user.id } },
     });
-
     if (!member || member.status !== "ACTIVE") {
         return NextResponse.json({ error: "Not an active member." }, { status: 404 });
     }
 
     if (member.role === "ADMIN") {
-        // Check if there are other admins
         const otherAdmins = await prisma.communityMember.count({
             where: { groupId, role: "ADMIN", status: "ACTIVE", userId: { not: session.user.id } },
         });
@@ -36,7 +41,14 @@ export async function POST(req: Request) {
         data: { status: "LEFT" },
     });
 
-    // Notify group in real-time
+    // Tell the leaving user's client to move group to discover if public
+    await pusher.trigger(`user-${session.user.id}`, "join:rejected", {
+        groupId,
+        groupName: group.name,
+        isPrivate: group.isPrivate,
+    });
+
+    // Notify group channel
     await pusher.trigger(`group-${groupId}`, "member:left", {
         userId: session.user.id,
         userName: session.user.name,

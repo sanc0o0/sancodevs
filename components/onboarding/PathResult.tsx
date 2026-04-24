@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PATHS } from "@/lib/path";
 import { BUILDER_PROJECT_SUGGESTIONS, type ReadinessResult } from "@/lib/readiness";
-import Link from "next/link";
 
 interface Props {
     goalId: string;

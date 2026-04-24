@@ -5,75 +5,90 @@ import { prisma } from "@/lib/prisma";
 import { pusher } from "@/lib/pusher";
 
 export async function POST(req: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-    // ✅ ALWAYS verify user exists before any FK operation
-    const userExists = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { id: true, name: true, image: true },
-    });
-    if (!userExists) {
-        return NextResponse.json({
-            error: "User not found. Please sign out and sign back in.",
-        }, { status: 404 });
-    }
+        const body = await req.json();
+        const { groupId } = body;
 
-    const { groupId } = await req.json();
-    if (!groupId) return NextResponse.json({ error: "groupId required." }, { status: 400 });
+        if (!groupId) {
+            return NextResponse.json({ error: "groupId required." }, { status: 400 });
+        }
 
-    const group = await prisma.communityGroup.findUnique({ where: { id: groupId } });
-    if (!group) return NextResponse.json({ error: "Group not found." }, { status: 404 });
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { id: true, name: true, image: true },
+        });
 
-    if (group.isPrivate) {
-        return NextResponse.json({
-            error: "This group is private. You can only join by invitation.",
-        }, { status: 403 });
-    }
+        if (!user) {
+            return NextResponse.json({ error: "User not found." }, { status: 404 });
+        }
 
-    const existing = await prisma.communityMember.findUnique({
-        where: { groupId_userId: { groupId, userId: userExists.id } },
-    });
+        const group = await prisma.communityGroup.findUnique({
+            where: { id: groupId },
+        });
 
-    if (existing?.status === "ACTIVE") return NextResponse.json({ error: "Already a member.", status: "ACTIVE" }, { status: 409 });
-    if (existing?.status === "PENDING") return NextResponse.json({ error: "Request already pending.", status: "PENDING" }, { status: 409 });
-    if (existing?.status === "INVITED") return NextResponse.json({ error: "You have a pending invitation.", status: "INVITED" }, { status: 409 });
+        if (!group) {
+            return NextResponse.json({ error: "Group not found." }, { status: 404 });
+        }
 
-    await prisma.communityMember.upsert({
-        where: { groupId_userId: { groupId, userId: userExists.id } },
-        update: { status: "PENDING" },
-        create: {
-            groupId,
-            userId: userExists.id,
-            status: "PENDING",
-            role: "MEMBER",
-        },
-    });
+        if (group.isPrivate) {
+            return NextResponse.json({ error: "This group is private." }, { status: 403 });
+        }
 
-    // Notify ALL admins
-    const admins = await prisma.communityMember.findMany({
-        where: { groupId, role: "ADMIN", status: "ACTIVE" },
-        select: { userId: true },
-    });
+        const existing = await prisma.communityMember.findUnique({
+            where: { groupId_userId: { groupId, userId: user.id } },
+        });
 
-    for (const admin of admins) {
-        const notif = await prisma.notification.create({
-            data: {
-                userId: admin.userId,
-                title: `Join request — ${group.name}`,
-                body: `${userExists.name ?? "Someone"} wants to join your group.`,
-                href: `/community`,
+        if (existing?.status === "ACTIVE") {
+            return NextResponse.json({ error: "Already a member.", status: "ACTIVE" }, { status: 409 });
+        }
+        if (existing?.status === "PENDING") {
+            return NextResponse.json({ error: "Request already pending.", status: "PENDING" }, { status: 409 });
+        }
+
+        await prisma.communityMember.upsert({
+            where: { groupId_userId: { groupId, userId: user.id } },
+            update: { status: "PENDING" },
+            create: {
+                groupId,
+                userId: user.id,
+                status: "PENDING",
+                role: "MEMBER",
             },
         });
-        await pusher.trigger(`user-${admin.userId}`, "notification:new", notif);
-        await pusher.trigger(`user-${admin.userId}`, "join:request:new", {
-            groupId,
-            groupName: group.name,
-            userId: userExists.id,
-            userName: userExists.name,
-            userImage: userExists.image,
-        });
-    }
 
-    return NextResponse.json({ status: "PENDING" });
+        const admins = await prisma.communityMember.findMany({
+            where: { groupId, role: "ADMIN", status: "ACTIVE" },
+            select: { userId: true },
+        });
+
+        for (const admin of admins) {
+            const notif = await prisma.notification.create({
+                data: {
+                    userId: admin.userId,
+                    title: `Join request — ${group.name}`,
+                    body: `${user.name ?? "Someone"} wants to join your group.`,
+                    href: `/community`,
+                },
+            });
+            await pusher.trigger(`user-${admin.userId}`, "notification:new", notif);
+            await pusher.trigger(`user-${admin.userId}`, "join:request:new", {
+                groupId,
+                groupName: group.name,
+                userId: user.id,
+                userName: user.name,
+                userImage: user.image,
+            });
+        }
+
+        return NextResponse.json({ status: "PENDING" });
+
+    } catch (error) {
+        console.error("JOIN ROUTE ERROR:", error);
+        return NextResponse.json({ error: "Internal server error." }, { status: 500 });
+    }
 }

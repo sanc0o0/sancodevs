@@ -51,6 +51,10 @@ export default function DetailsPane({
     const [addSuccess, setAddSuccess] = useState("");
     const [adding, setAdding] = useState(false);
     const [showAddPeople, setShowAddPeople] = useState(false);
+    const [removingId, setRemovingId] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
 
     // ── Load members (not useState — proper useEffect with useCallback) ──
     const loadMembers = useCallback(async () => {
@@ -225,6 +229,34 @@ export default function DetailsPane({
     function getColor(name: string) {
         const colors = ["bg-orange-500", "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-pink-500", "bg-teal-500"];
         return colors[(name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % colors.length];
+    }
+
+    async function handleRemoveMember(targetUserId: string, name: string) {
+        if (!confirm(`Remove ${name} from this group?`)) return;
+        setRemovingId(targetUserId);
+        const res = await fetch(`/api/community/groups/${group.id}/members/remove`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ targetUserId }),
+        });
+        if (res.ok) {
+            setMembers(prev => prev.filter(m => m.userId !== targetUserId));
+            onGroupUpdated({ memberCount: group.memberCount - 1 });
+        }
+        setRemovingId(null);
+    }
+
+    async function deleteGroup() {
+        setDeleting(true);
+        const res = await fetch(`/api/community/groups/${group.id}/delete`, {
+            method: "DELETE",
+        });
+        if (res.ok) {
+            onGroupLeft(); // removes from shell state
+        } else {
+            setDeleting(false);
+            setShowDeleteConfirm(false);
+        }
     }
 
     return (
@@ -413,29 +445,41 @@ export default function DetailsPane({
                             ) : members.length === 0 ? (
                                 <p className="text-xs text-[var(--muted)] py-4 text-center">No members found</p>
                             ) : (
-                                members.map(m => (
-                                    <div key={m.userId} className="flex items-center gap-3 py-2.5 border-b border-[var(--border)] last:border-0">
-                                        <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white overflow-hidden ${getColor(m.user.name ?? "?")}`}>
-                                            {m.user.image
-                                                ? <img src={m.user.image} alt="" className="w-full h-full object-cover" />
-                                                : m.user.name?.charAt(0).toUpperCase()
-                                            }
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium text-[var(--text)] truncate">
-                                                {m.user.name}
-                                                {m.userId === currentUserId && (
-                                                    <span className="text-[var(--muted)] font-normal"> (you)</span>
-                                                )}
-                                            </p>
-                                            <p className="text-[10px] text-[var(--muted)] truncate">{m.user.email}</p>
-                                        </div>
-                                        {m.role === "ADMIN" && (
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[var(--accent)]/30 text-[var(--accent)] flex-shrink-0 font-medium">
-                                                Admin
-                                            </span>
-                                        )}
-                                    </div>
+                                        // In the members map inside tab === "members", add remove button for non-admins:
+                                        members.map(m => (
+                                            <div key={m.userId} className="flex items-center gap-3 py-2.5 border-b border-[var(--border)] last:border-0">
+                                                <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white overflow-hidden ${getColor(m.user.name ?? "?")}`}>
+                                                    {m.user.image
+                                                        ? <img src={m.user.image} alt="" className="w-full h-full object-cover" />
+                                                        : m.user.name?.charAt(0).toUpperCase()
+                                                    }
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-medium text-[var(--text)] truncate">
+                                                        {m.user.name}
+                                                        {m.userId === currentUserId && <span className="text-[var(--muted)] font-normal"> (you)</span>}
+                                                    </p>
+                                                    <p className="text-[10px] text-[var(--muted)] truncate">{m.user.email}</p>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                    {m.role === "ADMIN" && (
+                                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[var(--accent)]/30 text-[var(--accent)] font-medium">
+                                                            Admin
+                                                        </span>
+                                                    )}
+                                                    {/* Admin can remove non-admin members who aren't themselves */}
+                                                    {isAdmin && m.role !== "ADMIN" && m.userId !== currentUserId && (
+                                                        <button
+                                                            onClick={() => handleRemoveMember(m.userId, m.user.name ?? "this member")}
+                                                            disabled={removingId === m.userId}
+                                                            aria-label={`Remove ${m.user.name}`}
+                                                            className="text-[9px] px-1.5 py-0.5 rounded border border-red-500/20 text-red-400 bg-transparent cursor-pointer hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                                        >
+                                                            {removingId === m.userId ? "..." : "Remove"}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                 ))
                             )}
                         </div>
@@ -485,33 +529,57 @@ export default function DetailsPane({
                 </div>
 
                 {/* Danger zone */}
-                <div className="px-4 py-4 mt-1 border-t border-[var(--border)]">
-                    {!showLeaveConfirm ? (
-                        <button
-                            onClick={() => setShowLeaveConfirm(true)}
-                            aria-label="Leave this chat"
-                            className="text-sm text-red-400 hover:text-red-300 transition-colors bg-none border-none cursor-pointer text-left w-full py-1"
-                        >
-                            Leave chat
-                        </button>
-                    ) : (
+                <div className="px-4 py-4 mt-1 border-t border-[var(--border)] flex flex-col gap-2">
+                    {/* Leave chat — non-admins or admins with other admins */}
+                    {!showLeaveConfirm && !showDeleteConfirm && (
+                        <>
+                            <button
+                                onClick={() => setShowLeaveConfirm(true)}
+                                aria-label="Leave this chat"
+                                className="text-sm text-red-400 hover:text-red-300 transition-colors bg-none border-none cursor-pointer text-left py-1"
+                            >
+                                Leave chat
+                            </button>
+                            {isAdmin && (
+                                <button
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    aria-label="Delete group permanently"
+                                    className="text-sm text-red-500 hover:text-red-400 transition-colors bg-none border-none cursor-pointer text-left py-1 font-medium"
+                                >
+                                    Delete group permanently
+                                </button>
+                            )}
+                        </>
+                    )}
+
+                    {showLeaveConfirm && (
                         <div className="p-3 rounded-xl border border-red-400/20 bg-red-400/5">
                             <p className="text-[10px] text-[var(--muted)] leading-relaxed mb-3">
                                 You won&apos;t be able to send or receive messages unless someone adds you back.
                             </p>
                             <div className="flex gap-2">
-                                <button
-                                    onClick={() => setShowLeaveConfirm(false)}
-                                    aria-label="Cancel leaving"
-                                    className="flex-1 py-1.5 rounded-lg text-xs border border-[var(--border)] bg-transparent text-[var(--muted)] cursor-pointer"
-                                >Cancel</button>
-                                <button
-                                    onClick={leaveGroup}
-                                    disabled={leaving}
-                                    aria-label="Confirm leave"
-                                    className="flex-1 py-1.5 rounded-lg text-xs bg-red-500 text-white border-none cursor-pointer disabled:opacity-60 font-medium"
-                                >
+                                <button onClick={() => setShowLeaveConfirm(false)} aria-label="Cancel leaving"
+                                    className="flex-1 py-1.5 rounded-lg text-xs border border-[var(--border)] bg-transparent text-[var(--muted)] cursor-pointer">Cancel</button>
+                                <button onClick={leaveGroup} disabled={leaving} aria-label="Confirm leave"
+                                    className="flex-1 py-1.5 rounded-lg text-xs bg-red-500 text-white border-none cursor-pointer disabled:opacity-60 font-medium">
                                     {leaving ? "Leaving..." : "Leave"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {showDeleteConfirm && isAdmin && (
+                        <div className="p-3 rounded-xl border border-red-500/30 bg-red-500/5">
+                            <p className="text-xs font-medium text-red-400 mb-1">Delete group permanently?</p>
+                            <p className="text-[10px] text-[var(--muted)] leading-relaxed mb-3">
+                                All messages and members will be removed. All members will be notified. This cannot be undone.
+                            </p>
+                            <div className="flex gap-2">
+                                <button onClick={() => setShowDeleteConfirm(false)} aria-label="Cancel"
+                                    className="flex-1 py-1.5 rounded-lg text-xs border border-[var(--border)] bg-transparent text-[var(--muted)] cursor-pointer">Cancel</button>
+                                <button onClick={deleteGroup} disabled={deleting} aria-label="Confirm delete group"
+                                    className="flex-1 py-1.5 rounded-lg text-xs bg-red-500 text-white border-none cursor-pointer disabled:opacity-60 font-medium">
+                                    {deleting ? "Deleting..." : "Delete"}
                                 </button>
                             </div>
                         </div>

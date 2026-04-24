@@ -124,6 +124,12 @@ export default function CommunityShell({
                 ));
             });
 
+            channel.bind("group:deleted", () => {
+                // Group was deleted — handled by user channel above
+                // Just unsubscribe
+                pusher.unsubscribe(`group-${g.id}`);
+            });
+
             return { groupId: g.id, channel };
         });
 
@@ -134,18 +140,19 @@ export default function CommunityShell({
         };
     }, [groups.length, activeGroupId, currentUserId]);
 
-    // Clear unread when group is opened:
-    function handleSelectGroup(id: string) {
-        setActiveGroupId(id);
-        setShowDetails(false);
-        setUnreadCounts(prev => ({ ...prev, [id]: 0 }));
-    }
-
+    
     const activeGroup = groups.find(g => g.id === activeGroupId) ?? null;
     useEffect(() => {
         const pusher = getPusherClient();
         const channel = pusher.subscribe(`user-${currentUserId}`);
-
+        
+        channel.bind("group:deleted", ({ groupId }: { groupId: string }) => {
+            // Remove from groups list immediately
+            setGroups(prev => prev.filter(g => g.id !== groupId));
+            // If currently viewing the deleted group, close it
+            setActiveGroupId(prev => prev === groupId ? null : prev);
+        });
+        
         // When admin approves → move from requests to chats
         channel.bind("join:accepted", ({ groupId, groupName }: { groupId: string; groupName: string }) => {
             setRequests(prev => {
@@ -188,13 +195,31 @@ export default function CommunityShell({
                 return prev.filter(r => r.groupId !== groupId);
             });
         });
-
         return () => {
             channel.unbind_all();
             pusher.unsubscribe(`user-${currentUserId}`);
         };
     }, [activeGroup, currentUserId]);
+    
+    useEffect(() => {
+        if (!activeGroupId) return;
+        fetch(`/api/community/groups/${activeGroupId}/members`)
+            .then(r => r.ok ? r.json() : [])
+            .then((members: { userId: string; role: "ADMIN" | "MEMBER" }[]) => {
+                const me = members.find(m => m.userId === currentUserId);
+                if (me) {
+                    setMemberRoles(prev => ({ ...prev, [activeGroupId]: me.role }));
+                }
+            })
+            .catch(() => { });
+    }, [activeGroupId, currentUserId]);
 
+    // Clear unread when group is opened:
+    function handleSelectGroup(id: string) {
+        setActiveGroupId(id);
+        setShowDetails(false);
+        setUnreadCounts(prev => ({ ...prev, [id]: 0 }));
+    }
 
     function handleGroupCreated(newGroup: GroupSummary) {
         setGroups(prev => [newGroup, ...prev]);
