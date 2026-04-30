@@ -117,7 +117,7 @@ export async function POST(req: Request) {
                 name: `${communityName || title} · ${project.id.slice(0, 6)}`,
                 description: `Community for the "${title}" project`,
                 createdBy: session.user.id,
-                members: { create: { userId: session.user.id, role: "ADMIN" } },
+                members: { create: { userId: session.user.id, role: "ADMIN", status: "ACTIVE" } },
             },
         });
 

@@ -29,6 +29,7 @@ export async function POST(req: Request) {
 
         const group = await prisma.communityGroup.findUnique({
             where: { id: groupId },
+            select: { id: true, name: true, isPrivate: true, maxMembers: true },
         });
 
         if (!group) {
@@ -38,6 +39,24 @@ export async function POST(req: Request) {
         if (group.isPrivate) {
             return NextResponse.json({ error: "This group is private." }, { status: 403 });
         }
+        // Capacity check
+        if (group.maxMembers) {
+            const activeCount = await prisma.communityMember.count({
+                where: { groupId, status: "ACTIVE" },
+            });
+            if (activeCount >= group.maxMembers) {
+                return NextResponse.json({
+                    error: "GROUP_FULL",
+                    message: `This group is full (${group.maxMembers} members max).`,
+                    activeCount,
+                    maxMembers: group.maxMembers,
+                }, { status: 409 });
+            }
+        }
+
+        const activeCount = await prisma.communityMember.count({
+            where: { groupId, status: "ACTIVE" },
+        });
 
         const existing = await prisma.communityMember.findUnique({
             where: { groupId_userId: { groupId, userId: user.id } },
