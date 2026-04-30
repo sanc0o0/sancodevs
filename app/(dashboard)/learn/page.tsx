@@ -26,7 +26,7 @@ export default async function LearnPage() {
     const percent = Math.round((completedCount / total) * 100);
 
     return (
-        <div className="max-w-6xl mx-auto p-5 grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="max-w-6xl mx-auto p-7.5 grid gap-6 lg:grid-cols-[2fr_1fr]">
 
             {/* LEFT — MODULES */}
             <div>

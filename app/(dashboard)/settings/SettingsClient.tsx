@@ -97,7 +97,7 @@ export default function SettingsClient({ user }: Props) {
     };
 
     return (
-        <div style={{ maxWidth: "680px", padding: "20px"}}>
+        <div style={{ maxWidth: "680px", padding: "30px"}}>
             <div style={{ width: "28px", height: "2px", background: "var(--accent)", marginBottom: "1rem" }} />
             <h1 style={{ fontSize: "21px", fontWeight: 500, color: "var(--text)", marginBottom: "2rem" }}>Settings</h1>
 

@@ -77,15 +77,20 @@ export default async function UserProfilePage({
     }
 
     // Stats
-    const [totalProjects, activeGroups, tasksCompleted, totalTasks, friendCount] = await Promise.all([
+    const [totalProjects, activeGroups, tasksCompleted, totalTasks, friendCount, userStats] = await Promise.all([
         prisma.teamMember.count({ where: { userId } }),
         prisma.communityMember.count({ where: { userId, status: "ACTIVE" } }),
         prisma.projectTask.count({ where: { assignedTo: userId, status: "DONE" } }),
         prisma.projectTask.count({ where: { assignedTo: userId } }),
         prisma.friendship.count({ where: { OR: [{ user1Id: userId }, { user2Id: userId }] } }),
+        prisma.userStats.findUnique({ where: { userId } }),
     ]);
 
     const completionRate = totalTasks > 0 ? Math.round((tasksCompleted / totalTasks) * 100) : 0;
+    const reliabilityScore = userStats?.reliabilityScore ?? 100;
+    const onTimeRate = userStats?.onTimeRate ?? 100;
+    const tasksMissed = userStats?.tasksMissed ?? 0;
+    const tasksLate = userStats?.tasksLate ?? 0;
 
     const categoryLabel: Record<string, string> = {
         BEGINNER: "Beginner", INTERMEDIATE: "Intermediate", BUILDER: "Expert",
@@ -159,7 +164,7 @@ export default async function UserProfilePage({
                         { label: "Projects", value: totalProjects },
                         { label: "Groups", value: activeGroups },
                         { label: "Friends", value: friendCount },
-                        { label: "Done", value: `${completionRate}%` },
+                        { label: "Reliability", value: `${reliabilityScore}%` },
                     ].map(s => (
                         <div key={s.label} className="text-center">
                             <p className="text-lg font-semibold text-[var(--text)]">{s.value}</p>
@@ -187,6 +192,22 @@ export default async function UserProfilePage({
                     </div>
                 )}
             </div>
+
+            {/* Reliability breakdown */}
+            {totalTasks > 0 && (
+                <div className="flex gap-3 mt-3 pt-3 border-t border-[var(--border)]">
+                    {[
+                        { label: "On time", value: `${onTimeRate}%`, color: "text-green-500" },
+                        { label: "Late", value: tasksLate, color: "text-orange-400" },
+                        { label: "Missed", value: tasksMissed, color: "text-red-400" },
+                    ].map(s => (
+                        <div key={s.label} className="text-center flex-1">
+                            <p className={`text-sm font-semibold ${s.color}`}>{s.value}</p>
+                            <p className="text-[9px] text-[var(--muted)]">{s.label}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Tabbed content */}
             <ProfileTabs
