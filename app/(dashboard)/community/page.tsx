@@ -38,7 +38,7 @@ export default async function CommunityPage() {
         include: {
             group: {
                 select: {
-                    id: true, name: true, description: true, isPrivate: true,
+                    id: true, name: true, description: true, isPrivate: true, createdBy: true, createdAt: true,
                     _count: { select: { members: { where: { status: "ACTIVE" } } } },
                 },
             },
@@ -68,6 +68,7 @@ export default async function CommunityPage() {
                     memberCount: g._count.members,
                     muted: g.members[0]?.muted ?? false,
                     pinned: g.members[0]?.pinned ?? false,
+                    createdBy: g.createdBy,
                     role: (g.members[0]?.role ?? "MEMBER") as "ADMIN" | "MEMBER",
                     lastMessage: g.messages[0] ? {
                         senderName: g.messages[0].user.name,
@@ -83,6 +84,8 @@ export default async function CommunityPage() {
                         name: r.group.name,
                         description: r.group.description,
                         isPrivate: r.group.isPrivate,
+                        createdBy: r.group.createdBy,
+                        createdAt: r.group.createdAt.toISOString(),
                         memberCount: r.group._count.members,
                     },
                 }))}

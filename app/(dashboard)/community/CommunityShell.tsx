@@ -16,6 +16,7 @@ type GroupSummary = {
     memberCount: number;
     muted: boolean;
     pinned: boolean;
+    createdBy: string;
     role: "ADMIN" | "MEMBER";
     lastMessage: {
         senderName: string | null;
@@ -40,7 +41,8 @@ type RequestSummary = {
         name: string; 
         description: string | null; 
         isPrivate: boolean; 
-        memberCount: number 
+        memberCount: number;
+        createdBy: string;
     };
 };
 
@@ -167,6 +169,7 @@ export default function CommunityShell({
                         memberCount: req.group.memberCount + 1,
                         muted: false,
                         pinned: false,
+                        createdBy: req.group.createdBy,
                         role: "MEMBER" as const,
                         lastMessage: null,
                     }]);
@@ -338,7 +341,7 @@ export default function CommunityShell({
                         <DetailsPane
                             group={activeGroup}
                             currentUserId={currentUserId}
-                            isAdmin={memberRoles[activeGroup.id] === "ADMIN"}
+                            isAdmin={memberRoles[activeGroup.id] === "ADMIN" || activeGroup.createdBy === currentUserId}
                             onClose={() => setShowDetails(false)}
                             onGroupUpdated={updates => handleGroupUpdated(activeGroup.id, updates)}
                             onGroupLeft={() => handleGroupLeft(activeGroup.id)}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
 type GroupSummary = {
     id: string;
@@ -10,6 +11,7 @@ type GroupSummary = {
     memberCount: number;
     muted: boolean;
     pinned: boolean;
+    createdBy: string;
     role: "ADMIN" | "MEMBER";
     lastMessage: { senderName: string | null; content: string | null; createdAt: string } | null;
     unreadCount?: number;
@@ -61,10 +63,31 @@ export default function GroupList({
     const [createError, setCreateError] = useState("");
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+    const [fullGroups, setFullGroups] = useState<Set<string>>(new Set());
     const [respondingId, setRespondingId] = useState<string | null>(null);
+    const [groupCapacity, setGroupCapacity] = useState<Record<string, { isFull: boolean; activeCount: number; maxMembers: number | null }>>({});
 
+    // function to check capacity:
+    async function checkCapacity(groupId: string) {
+        if (groupCapacity[groupId] !== undefined) return; // already checked
+        try {
+            const res = await fetch(`/api/community/groups/${groupId}/capacity`);
+            if (res.ok) {
+                const data = await res.json();
+                setGroupCapacity(prev => ({ ...prev, [groupId]: data }));
+            }
+        } catch { }
+    }
+
+    // ADD useEffect:
+    useEffect(() => {
+        if (tab !== "discover") return;
+        discoverGroups.forEach(g => checkCapacity(g.id));
+    }, [tab, discoverGroups.length]);
     const filtered = groups.filter(g =>
-        g.name.toLowerCase().includes(search.toLowerCase())
+        g.name.toLowerCase().includes(search.toLowerCase()) ||
+        g.id.toLowerCase().includes(search.toLowerCase()) ||
+        g.id.slice(0, 8).toUpperCase().includes(search.toUpperCase())
     );
     const pinned = filtered.filter(g => g.pinned);
     const rest = filtered.filter(g => !g.pinned);
@@ -104,7 +127,7 @@ export default function GroupList({
             onGroupCreated({
                 id: data.id, name: data.name, description: data.description,
                 isPrivate: data.isPrivate, memberCount: 1,
-                muted: false, pinned: false, role: "ADMIN", lastMessage: null,
+                muted: false, pinned: false, createdBy: currentUserId, role: "ADMIN", lastMessage: null,
             });
             setCreating(false);
             setNewName(""); setNewDesc(""); setNewEmails(""); setNewPrivate(true);
@@ -122,8 +145,17 @@ export default function GroupList({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ groupId }),
         });
-        if (res.ok || res.status === 409) {
+        const data = await res.json();
+        if (res.ok) {
             setJoinedIds(prev => new Set([...prev, groupId]));
+        } else if (res.status === 409) {
+            if (data.error === "GROUP_FULL") {
+                setFullGroups(prev => new Set([...prev, groupId]));
+                setGroupCapacity(prev => ({ ...prev, [groupId]: { isFull: true, activeCount: data.activeCount, maxMembers: data.maxMembers } }));
+            } else {
+                // Other 409 (already member, pending) — treat as joined
+                setJoinedIds(prev => new Set([...prev, groupId]));
+            }
         }
         setJoiningId(null);
     }
@@ -377,32 +409,50 @@ export default function GroupList({
                         ) : (
                             <>
                                 <p className="text-[9px] text-[var(--muted)] uppercase tracking-wider px-4 py-2">Public groups</p>
-                                {discoverGroups.map(g => {
-                                    const alreadyJoined = joinedIds.has(g.id);
-                                    return (
-                                        <div key={g.id} className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] hover:bg-[var(--surface2)] transition-colors">
-                                            <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white ${getColor(g.name)}`}>
-                                                {g.name.charAt(0).toUpperCase()}
+                                {discoverGroups
+                                    .filter(g =>
+                                        !search.trim() ||
+                                        g.name.toLowerCase().includes(search.toLowerCase()) ||
+                                        g.id.toLowerCase().includes(search.toLowerCase()) ||
+                                        g.id.slice(0, 8).toUpperCase().includes(search.toUpperCase())
+                                    )
+                                    .map(g => {
+                                        const alreadyJoined = joinedIds.has(g.id);
+                                        const isFull = groupCapacity[g.id]?.isFull ?? false;
+                                        
+                                        return (
+                                            <div key={g.id} className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] hover:bg-[var(--surface2)] transition-colors">
+                                                <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white ${getColor(g.name)}`}>
+                                                    {g.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-[var(--text)] truncate">{g.name}</p>
+                                                    <p className="text-[10px] text-[var(--muted)]">{g.memberCount} members</p>
+                                                </div>
+                                                {/* Reliability breakdown */}
+                                                {isFull ? (
+                                                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                                        <span className="text-[10px] text-red-400 font-medium">Group full</span>
+                                                        <Link href="/projects" className="text-[10px] text-[var(--accent)] no-underline hover:underline">
+                                                            Browse projects →
+                                                        </Link>
+                                                    </div>
+                                                ) : alreadyJoined ? (
+                                                    <span className="text-[10px] text-amber-400 flex-shrink-0">Pending...</span>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => joinGroup(g.id)}
+                                                        disabled={joiningId === g.id}
+                                                        aria-label={`Request to join ${g.name}`}
+                                                        className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)] bg-transparent cursor-pointer transition-colors disabled:opacity-50 flex-shrink-0 font-medium"
+                                                    >
+                                                        {joiningId === g.id ? "..." : "Request"}
+                                                    </button>
+                                                )}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-[var(--text)] truncate">{g.name}</p>
-                                                <p className="text-[10px] text-[var(--muted)]">{g.memberCount} members</p>
-                                            </div>
-                                            {alreadyJoined ? (
-                                                <span className="text-[10px] text-amber-400 flex-shrink-0">Pending...</span>
-                                            ) : (
-                                                <button
-                                                    onClick={() => joinGroup(g.id)}
-                                                    disabled={joiningId === g.id}
-                                                    aria-label={`Request to join ${g.name}`}
-                                                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)] bg-transparent cursor-pointer transition-colors disabled:opacity-50 flex-shrink-0 font-medium"
-                                                >
-                                                    {joiningId === g.id ? "..." : "Request"}
-                                                </button>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    }
+                                )}
                             </>
                         )}
                     </div>
@@ -471,3 +521,4 @@ function GroupRow({ group, active, onSelect, timeAgo, getColor, unreadCount}: {
         </button>
     );
 }
+

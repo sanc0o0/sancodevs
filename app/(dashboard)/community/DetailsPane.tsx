@@ -54,6 +54,13 @@ export default function DetailsPane({
     const [removingId, setRemovingId] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [idCopied, setIdCopied] = useState(false);
+
+    function copyGroupId() {
+        navigator.clipboard.writeText(group.id);
+        setIdCopied(true);
+        setTimeout(() => setIdCopied(false), 2000);
+    }
 
 
     // ── Load members (not useState — proper useEffect with useCallback) ──
@@ -311,6 +318,27 @@ export default function DetailsPane({
                         <p className="text-[11px] text-[var(--muted)] text-center leading-relaxed">{group.description}</p>
                     )}
                     <p className="text-[10px] text-[var(--muted)] mt-1">{group.memberCount} members</p>
+
+
+                    {/* Group ID — visible to all members */}
+                    <div className="flex items-center gap-1.5 mt-2">
+                        <p className="text-[9px] text-[var(--muted)] font-mono">
+                            ID: {group.id.slice(0, 8).toUpperCase()}
+                        </p>
+                        <button
+                            onClick={copyGroupId}
+                            aria-label="Copy group ID"
+                            style={{
+                                fontSize: "10px",
+                                color: idCopied ? "var(--accent)" : "var(--muted)",
+                                background: "none", border: "0.5px solid var(--border)",
+                                cursor: "pointer", padding: "1px 6px", borderRadius: "4px",
+                                transition: "color 0.15s",
+                            }}
+                        >
+                            {idCopied ? "Copied ✓" : "copy"}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Mute */}
@@ -448,12 +476,14 @@ export default function DetailsPane({
                                         // In the members map inside tab === "members", add remove button for non-admins:
                                         members.map(m => (
                                             <div key={m.userId} className="flex items-center gap-3 py-2.5 border-b border-[var(--border)] last:border-0">
-                                                <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white overflow-hidden ${getColor(m.user.name ?? "?")}`}>
-                                                    {m.user.image
-                                                        ? <img src={m.user.image} alt="" className="w-full h-full object-cover" />
-                                                        : m.user.name?.charAt(0).toUpperCase()
-                                                    }
-                                                </div>
+                                                <a href={`/user/${m.userId}`} className="no-underline flex-shrink-0">
+    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white overflow-hidden cursor-pointer hover:opacity-80 transition-opacity ${getColor(m.user.name ?? "?")}`}>
+        {m.user.image
+            ? <img src={m.user.image} alt="" className="w-full h-full object-cover" />
+            : m.user.name?.charAt(0).toUpperCase()
+        }
+    </div>
+</a>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-xs font-medium text-[var(--text)] truncate">
                                                         {m.user.name}
