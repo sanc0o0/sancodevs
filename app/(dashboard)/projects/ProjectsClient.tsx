@@ -112,7 +112,9 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
             result = result.filter(p =>
                 p.title.toLowerCase().includes(q) ||
                 p.description.toLowerCase().includes(q) ||
-                p.techStack.some(t => t.toLowerCase().includes(q))
+                p.techStack.some(t => t.toLowerCase().includes(q)) ||
+                p.id.toLowerCase().includes(q) ||
+                p.id.slice(0, 8).toUpperCase().includes(search.toUpperCase())
             );
         }
 
@@ -147,7 +149,7 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
             height: "calc(100vh - 54px)", // account for navbar
             display: "flex",
             overflow: "hidden",
-            padding: "20px"
+            padding: "30px"
         }}>
             <div className="flex flex-col gap-4 h-full w-full">
                 <div className="flex flex-col gap-4 flex-shrink-0">
@@ -269,7 +271,7 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                         style={{
                             flex: 1,
                             overflowY: "auto",
-                            padding: "1.5rem 2rem",
+                            padding: "0.5rem 0rem",
                             minWidth: 0,
                         }}
                     >

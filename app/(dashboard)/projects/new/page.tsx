@@ -68,20 +68,12 @@ export default function NewProjectPage() {
         t.toLowerCase().includes(techSearch.toLowerCase())
     );
 
-    // Update useEffect to auto-fill community name from project title:
-    useEffect(() => {
-        if (createCommunity && title && !communityName) {
-            setCommunityName(title);
-        }
-    }, [title, createCommunity]);
-
     function toggleTech(tech: string) {
         setTechStack(prev =>
             prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]
         );
     }
-
-
+    
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError("");
@@ -116,7 +108,7 @@ export default function NewProjectPage() {
     };
 
     return (
-        <div style={{ maxWidth: "620px" }}>
+        <div style={{ width: "100%" , padding: "30px"}}>
             <div style={{ width: "24px", height: "2px", background: "var(--accent)", marginBottom: "1rem" }} />
             <h1 style={{ fontSize: "21px", fontWeight: 500, color: "var(--text)", marginBottom: "4px" }}>
                 Create a project
@@ -176,7 +168,7 @@ export default function NewProjectPage() {
                                 title="Project difficulty"
                                 aria-label="Project difficulty"
                                 value={difficulty} onChange={e => setDifficulty(e.target.value)}
-                                style={{ ...inputStyle, cursor: "pointer" }}
+                                style={{ ...inputStyle, cursor: "pointer", paddingRight: "5px"}}
                                 onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                                 onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
                             >
@@ -196,7 +188,7 @@ export default function NewProjectPage() {
                                     onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                                     onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
                                 >
-                                    {["2", "3", "4", "5"].map(n => <option key={n} value={n}>{n} people</option>)}
+                                    {["2", "3", "4", "5", "6"].map(n => <option key={n} value={n}>{n} people</option>)}
                                 </select>
                             </div>
                         )}
