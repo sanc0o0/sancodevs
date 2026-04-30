@@ -42,6 +42,8 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ i
                     createdAt: t.createdAt.toISOString(),
                     updatedAt: t.updatedAt.toISOString(),
                     dueDate: t.dueDate?.toISOString() ?? null,
+                    submittedAt: t.submittedAt?.toISOString() ?? null,
+                    reviewedAt: t.reviewedAt?.toISOString() ?? null,
                 })),
             }}
             currentUserId={session.user.id}
