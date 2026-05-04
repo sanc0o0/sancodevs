@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { updateUserStats } from "@/lib/scoring";
 
 export async function PATCH(
     req: Request,
@@ -26,25 +27,18 @@ export async function PATCH(
     const isOwner = project?.createdBy === session.user.id;
     const isAssignee = existing.assignedTo === session.user.id;
 
-    // ── Submission flow (assignee submits with URL) ──
+    // ── Submit flow ──
     if (body.action === "submit") {
-        if (!isAssignee) {
+        if (!isAssignee)
             return NextResponse.json({ error: "Only the assignee can submit." }, { status: 403 });
-        }
-        if (!body.submissionUrl) {
+        if (!body.submissionUrl)
             return NextResponse.json({ error: "Submission URL required." }, { status: 400 });
-        }
-        if (!["TODO", "IN_PROGRESS", "MISSED"].includes(existing.status)) {
+        if (!["TODO", "IN_PROGRESS", "MISSED"].includes(existing.status))
             return NextResponse.json({ error: "This task cannot be submitted." }, { status: 400 });
-        }
 
-        // Validate repo URL format
         const isValidRepo = /^(https?:\/\/)?(www\.)?(github|gitlab|bitbucket)\.com\/.+/.test(body.submissionUrl);
-        if (!isValidRepo) {
-            return NextResponse.json({
-                error: "Submission URL must be a valid GitHub, GitLab, or Bitbucket URL.",
-            }, { status: 400 });
-        }
+        if (!isValidRepo)
+            return NextResponse.json({ error: "Must be a valid GitHub, GitLab, or Bitbucket URL." }, { status: 400 });
 
         const isLate = existing.dueDate ? new Date() > new Date(existing.dueDate) : false;
 
@@ -58,7 +52,6 @@ export async function PATCH(
             include: { assignee: { select: { id: true, name: true, image: true } } },
         });
 
-        // Notify project owner
         if (project && project.createdBy !== session.user.id) {
             await prisma.notification.create({
                 data: {
@@ -73,14 +66,12 @@ export async function PATCH(
         return NextResponse.json(task);
     }
 
-    // ── Review flow (owner approves/rejects) ──
+    // ── Review flow ──
     if (body.action === "review") {
-        if (!isOwner) {
+        if (!isOwner)
             return NextResponse.json({ error: "Only the project owner can review." }, { status: 403 });
-        }
-        if (!["APPROVED", "REJECTED"].includes(body.verdict)) {
+        if (!["APPROVED", "REJECTED"].includes(body.verdict))
             return NextResponse.json({ error: "verdict must be APPROVED or REJECTED." }, { status: 400 });
-        }
 
         const isLate = existing.dueDate && existing.submittedAt
             ? new Date(existing.submittedAt) > new Date(existing.dueDate)
@@ -101,9 +92,9 @@ export async function PATCH(
             include: { assignee: { select: { id: true, name: true, image: true } } },
         });
 
-        // Update UserStats for the assignee
+        // ── Scoring: recalculate after terminal state reached ──
         if (existing.assignedTo) {
-            await updateUserStats(existing.assignedTo, newStatus);
+            await updateUserStats(existing.assignedTo);
         }
 
         // Notify assignee
@@ -123,10 +114,9 @@ export async function PATCH(
         return NextResponse.json(task);
     }
 
-    // ── Standard field updates (owner/assignee) ──
-    if (!isOwner && !isAssignee) {
+    // ── Standard field updates ──
+    if (!isOwner && !isAssignee)
         return NextResponse.json({ error: "Not authorized." }, { status: 403 });
-    }
 
     const task = await prisma.projectTask.update({
         where: { id: taskId },
@@ -157,34 +147,9 @@ export async function DELETE(
         where: { id: projectId },
         select: { createdBy: true },
     });
-    if (project?.createdBy !== session.user.id) {
+    if (project?.createdBy !== session.user.id)
         return NextResponse.json({ error: "Only the owner can delete tasks." }, { status: 403 });
-    }
 
     await prisma.projectTask.delete({ where: { id: taskId } });
     return NextResponse.json({ success: true });
-}
-
-// ── UserStats updater ──
-async function updateUserStats(userId: string, taskStatus: string) {
-    const allTasks = await prisma.projectTask.findMany({
-        where: { assignedTo: userId, status: { in: ["DONE", "LATE", "MISSED", "REJECTED"] } },
-    });
-
-    const completed = allTasks.filter(t => t.status === "DONE").length;
-    const late = allTasks.filter(t => t.status === "LATE").length;
-    const missed = allTasks.filter(t => t.status === "MISSED").length;
-    const rejected = allTasks.filter(t => t.status === "REJECTED").length;
-    const total = completed + late + missed + rejected;
-
-    const onTimeRate = total > 0 ? Math.round(((completed) / total) * 100) : 100;
-    const reliabilityScore = total > 0
-        ? Math.round(((completed + late * 0.5) / total) * 100)
-        : 100;
-
-    await prisma.userStats.upsert({
-        where: { userId },
-        update: { tasksCompleted: completed, tasksLate: late, tasksMissed: missed, tasksRejected: rejected, onTimeRate, reliabilityScore },
-        create: { userId, tasksCompleted: completed, tasksLate: late, tasksMissed: missed, tasksRejected: rejected, onTimeRate, reliabilityScore },
-    });
 }

@@ -1,288 +1,308 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { PATHS } from "@/lib/path";
+import { redirect } from "next/navigation";
+import { getReliabilityTier } from "@/lib/scoring";
 import Link from "next/link";
 
 export default async function ProfilePage() {
     const session = await getServerSession(authOptions);
     if (!session) redirect("/login");
 
-    const [onboarding, progress, applications, notifications] = await Promise.all([
-        prisma.userOnboarding.findUnique({ where: { userId: session.user.id } }),
-        prisma.userProgress.findMany({ where: { userId: session.user.id }, orderBy: { completedAt: "desc" } }),
-        prisma.projectApplication.findMany({ where: { userId: session.user.id } }),
-        prisma.notification.findMany({ where: { userId: session.user.id }, orderBy: { createdAt: "desc" }, take: 10 }),
-    ]);
+    const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: {
+            stats: true,
+            onboarding: true,
+            teams: {
+                include: {
+                    project: { select: { id: true, title: true, status: true } },
+                },
+                orderBy: { id: "desc" },
+                take: 6,
+            },
+            assignedTasks: {
+                where: { status: { in: ["TODO", "IN_PROGRESS", "SUBMITTED"] } },
+                include: { project: { select: { id: true, title: true } } },
+                orderBy: { dueDate: "asc" },
+                take: 5,
+            },
+        },
+    });
 
-    const path = onboarding ? PATHS[onboarding.pathId] : null;
-    const totalModules = path?.modules.length ?? 0;
-    const completedModules = progress.length;
-    const percent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+    if (!user) redirect("/login");
 
-    const initials = session.user.name
-        ?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) ?? "?";
+    const stats = user.stats;
+    const tier = stats ? getReliabilityTier(stats.reliabilityScore) : getReliabilityTier(100);
+    const totalTerminal = stats
+        ? stats.tasksCompleted + stats.tasksLate + stats.tasksMissed + stats.tasksRejected
+        : 0;
+
+    // Circumference for the ring SVG
+    const RING_R = 44;
+    const RING_C = 2 * Math.PI * RING_R;
+    const score = stats?.reliabilityScore ?? 100;
+    const ringOffset = RING_C - (score / 100) * RING_C;
 
     return (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem", maxWidth: "1100px", padding:"30px" }}>
+        <div className="w-full max-w-3xl mx-auto p-5 md:p-8 flex flex-col gap-6">
 
-            {/* Two column layout on desktop */}
-            <div className="profile-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(0,1fr)", gap: "1rem", alignItems: "start" }}>
-
-                {/* LEFT COLUMN */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-
-                    {/* Header */}
-                    <div style={{ marginBottom: "0.5rem" }}>
-                        <div style={{ width: "28px", height: "2px", background: "var(--accent)", marginBottom: "1rem" }} />
-                        <h1 style={{ fontSize: "21px", fontWeight: 500, color: "var(--text)" }}>Profile</h1>
-                    </div>
-
-                    {/* User card */}
-                    <div style={{
-                        border: "0.5px solid var(--border)", borderRadius: "11px",
-                        background: "var(--surface)", padding: "1.25rem",
-                        display: "flex", alignItems: "center", gap: "1rem",
-                        flexWrap: "wrap",
-                    }}>
-                        {session.user.image ? (
-                            <img src={session.user.image} alt={session.user.name ?? ""}
-                                style={{ width: "44px", height: "44px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-                            />
-                        ) : (
-                            <div style={{
-                                width: "44px", height: "44px", borderRadius: "50%",
-                                background: "var(--surface2)", border: "0.5px solid var(--border)",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                fontSize: "15px", fontWeight: 500, color: "var(--text)", flexShrink: 0,
-                            }}>
-                                {initials}
-                            </div>
-                        )}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontSize: "14px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>
-                                {session.user.name}
-                            </p>
-                            <p style={{
-                                fontSize: "12px", color: "var(--muted)",
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            }}>
-                                {session.user.email}
-                            </p>
-                        </div>
-                        {/* Badge — contained, no overflow */}
-                        <span style={{
-                            fontSize: "10px", padding: "3px 8px", borderRadius: "20px",
-                            border: "0.5px solid var(--border)", color: "var(--muted)",
-                            whiteSpace: "nowrap", flexShrink: 0,
-                            letterSpacing: "0.04em", textTransform: "uppercase",
-                        }}>
-                            {session.user.role ?? "USER"}
-                        </span>
-                    </div>
-
-                    {/* Stats */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
-                        {[
-                            { label: "Modules done", value: completedModules },
-                            { label: "Path progress", value: `${percent}%` },
-                            { label: "Applications", value: applications.length },
-                        ].map(stat => (
-                            <div key={stat.label} style={{
-                                padding: "1rem 0.75rem", borderRadius: "9px",
-                                border: "0.5px solid var(--border)", background: "var(--surface)",
-                                textAlign: "center",
-                            }}>
-                                <p style={{ fontSize: "20px", fontWeight: 500, color: "var(--text)", marginBottom: "4px" }}>
-                                    {stat.value}
-                                </p>
-                                <p style={{ fontSize: "11px", color: "var(--muted)", lineHeight: 1.4 }}>{stat.label}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Current path */}
-                    {path && (
-                        <div style={{
-                            border: "0.5px solid var(--border)", borderRadius: "11px",
-                            background: "var(--surface)", overflow: "hidden",
-                        }}>
-                            <div style={{ padding: "0.875rem 1.25rem", borderBottom: "0.5px solid var(--border)" }}>
-                                <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>Current path</p>
-                            </div>
-                            <div style={{ padding: "1rem 1.25rem" }}>
-                                <p style={{ fontSize: "14px", color: "var(--text)", marginBottom: "10px" }}>{path.label}</p>
-                                <div style={{ height: "3px", background: "var(--border)", borderRadius: "2px", marginBottom: "6px" }}>
-                                    <div style={{
-                                        height: "3px", background: "var(--accent)",
-                                        borderRadius: "2px", width: `${percent}%`, transition: "width 0.4s ease",
-                                    }} />
-                                </div>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <p style={{ fontSize: "11px", color: "var(--muted)" }}>
-                                        {completedModules} of {totalModules} modules complete
-                                    </p>
-                                    <Link href="/learn" style={{
-                                        fontSize: "11px", color: "var(--muted)", textDecoration: "none",
-                                    }}>
-                                        Continue →
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Skills */}
-                    {onboarding?.skills && onboarding.skills.length > 0 && (
-                        <div style={{
-                            border: "0.5px solid var(--border)", borderRadius: "11px",
-                            background: "var(--surface)", padding: "1.125rem 1.25rem",
-                        }}>
-                            <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)", marginBottom: "10px" }}>
-                                Your skills
-                            </p>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                {onboarding.skills.map(skill => (
-                                    <span key={skill} style={{
-                                        padding: "4px 10px", borderRadius: "6px", fontSize: "12px",
-                                        border: "0.5px solid var(--border)", color: "var(--muted)",
-                                        background: "var(--surface2)",
-                                    }}>
-                                        {skill}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Completed modules */}
-                    {progress.length > 0 && path && (
-                        <div style={{
-                            border: "0.5px solid var(--border)", borderRadius: "11px",
-                            background: "var(--surface)", overflow: "hidden",
-                        }}>
-                            <div style={{ padding: "0.875rem 1.25rem", borderBottom: "0.5px solid var(--border)" }}>
-                                <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>Completed modules</p>
-                            </div>
-                            {progress.map((p, i) => {
-                                const mod = path.modules[p.moduleIndex];
-                                return mod ? (
-                                    <div key={i} style={{
-                                        display: "flex", alignItems: "center", gap: "10px",
-                                        padding: "0.75rem 1.25rem",
-                                        borderBottom: i < progress.length - 1 ? "0.5px solid var(--border)" : "none",
-                                    }}>
-                                        <div style={{
-                                            width: "20px", height: "20px", borderRadius: "50%",
-                                            background: "var(--accent)", flexShrink: 0,
-                                            display: "flex", alignItems: "center", justifyContent: "center",
-                                        }}>
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" strokeWidth="3">
-                                                <path d="M20 6L9 17l-5-5" />
-                                            </svg>
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <p style={{ fontSize: "13px", color: "var(--text)" }}>{mod.title}</p>
-                                            <p style={{ fontSize: "11px", color: "var(--muted)" }}>{mod.sub}</p>
-                                        </div>
-                                        <span style={{ fontSize: "10px", color: "var(--muted)" }}>
-                                            {new Date(p.completedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                                        </span>
-                                    </div>
-                                ) : null;
-                            })}
-                        </div>
+            {/* ── Identity card ── */}
+            <div className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                <div className="w-14 h-14 rounded-full bg-[var(--surface2)] border border-[var(--border)] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {user.image
+                        ? <img src={user.image} alt="" className="w-full h-full object-cover" />
+                        : <span className="text-lg font-semibold text-[var(--text)]">{user.name?.charAt(0)}</span>
+                    }
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold text-[var(--text)] truncate">{user.name}</p>
+                    <p className="text-xs text-[var(--muted)] truncate">{user.email}</p>
+                    {user.onboarding && (
+                        <p className="text-[10px] text-[var(--muted)] mt-1 uppercase tracking-wider">
+                            {user.onboarding.userCategory} · {user.onboarding.skills.slice(0, 3).join(", ")}
+                        </p>
                     )}
                 </div>
+                <Link
+                    href="/settings"
+                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--muted)] no-underline transition-colors flex-shrink-0"
+                >
+                    Settings
+                </Link>
+            </div>
 
-                {/* RIGHT COLUMN — activity feed */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    <div style={{ marginBottom: "0.5rem" }}>
-                        <p style={{ fontSize: "21px", fontWeight: 500, color: "var(--text)", marginTop: "3.5rem" }}>
-                            Activity
-                        </p>
+            {/* ── Reliability score — the main metric ── */}
+            <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-4">Reliability Score</p>
+
+                <div className="flex items-center gap-6 flex-wrap">
+                    {/* Ring */}
+                    <div className="relative flex-shrink-0">
+                        <svg width="110" height="110" viewBox="0 0 110 110">
+                            {/* Track */}
+                            <circle
+                                cx="55" cy="55" r={RING_R}
+                                fill="none"
+                                stroke="var(--surface2)"
+                                strokeWidth="8"
+                            />
+                            {/* Score arc */}
+                            <circle
+                                cx="55" cy="55" r={RING_R}
+                                fill="none"
+                                stroke={tier.color}
+                                strokeWidth="8"
+                                strokeLinecap="round"
+                                strokeDasharray={RING_C}
+                                strokeDashoffset={ringOffset}
+                                transform="rotate(-90 55 55)"
+                                style={{ transition: "stroke-dashoffset 0.6s ease" }}
+                            />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-2xl font-bold text-[var(--text)]">{score}</span>
+                            <span className="text-[9px] text-[var(--muted)] uppercase tracking-wider">/ 100</span>
+                        </div>
                     </div>
 
-                    {/* Quick actions */}
-                    <div style={{
-                        border: "0.5px solid var(--border)", borderRadius: "11px",
-                        background: "var(--surface)", overflow: "hidden",
-                    }}>
-                        <div style={{ padding: "0.875rem 1.25rem", borderBottom: "0.5px solid var(--border)" }}>
-                            <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>Quick actions</p>
+                    {/* Tier info */}
+                    <div className="flex flex-col gap-2 flex-1 min-w-0">
+                        <div>
+                            <span className="text-sm font-semibold" style={{ color: tier.color }}>{tier.label}</span>
+                            <p className="text-xs text-[var(--muted)] mt-0.5">{tier.description}</p>
                         </div>
-                        {[
-                            { label: "Continue learning", href: "/learn", icon: "→" },
-                            { label: "Browse projects", href: "/projects", icon: "▣" },
-                            { label: "Create a project", href: "/projects/new", icon: "+" },
-                        ].map((action, i, arr) => (
-                            <Link key={action.href} href={action.href} style={{
-                                display: "flex", alignItems: "center", justifyContent: "space-between",
-                                padding: "0.75rem 1.25rem", textDecoration: "none",
-                                borderBottom: i < arr.length - 1 ? "0.5px solid var(--border)" : "none",
-                                transition: "background 0.1s",
-                            }}
-                                className="dropdown-item"
-                            >
-                                <span style={{ fontSize: "13px", color: "var(--muted)" }}>{action.label}</span>
-                                <span style={{ fontSize: "13px", color: "var(--muted)" }}>{action.icon}</span>
-                            </Link>
-                        ))}
-                    </div>
 
-                    {/* Notifications / recent activity */}
-                    <div style={{
-                        border: "0.5px solid var(--border)", borderRadius: "11px",
-                        background: "var(--surface)", overflow: "hidden",
-                    }}>
-                        <div style={{ padding: "0.875rem 1.25rem", borderBottom: "0.5px solid var(--border)" }}>
-                            <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>Recent notifications</p>
-                        </div>
-                        {notifications.length === 0 ? (
-                            <div style={{ padding: "1.5rem 1.25rem", textAlign: "center" }}>
-                                <p style={{ fontSize: "13px", color: "var(--muted)" }}>No activity yet</p>
-                            </div>
+                        {/* Signals */}
+                        {totalTerminal === 0 ? (
+                            <p className="text-xs text-[var(--muted)] italic">No tasks completed yet — score will update as you work.</p>
                         ) : (
-                            notifications.map((n, i) => (
-                                <div key={n.id} style={{
-                                    padding: "0.75rem 1.25rem",
-                                    borderBottom: i < notifications.length - 1 ? "0.5px solid var(--border)" : "none",
-                                    background: n.read ? "transparent" : "var(--surface2)",
-                                }}>
-                                    <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>{n.title}</p>
-                                    <p style={{ fontSize: "11px", color: "var(--muted)", lineHeight: 1.5 }}>{n.body}</p>
-                                    <p style={{ fontSize: "10px", color: "var(--muted)", marginTop: "4px" }}>
-                                        {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                                    </p>
-                                </div>
-                            ))
+                            <div className="flex flex-col gap-1">
+                                {stats && stats.tasksMissed >= 3 && (
+                                    <Signal type="warn" text={`Missed ${stats.tasksMissed} deadlines`} />
+                                )}
+                                {stats && stats.tasksRejected >= 2 && (
+                                    <Signal type="warn" text={`${stats.tasksRejected} tasks rejected`} />
+                                )}
+                                {stats && stats.onTimeRate >= 90 && totalTerminal >= 3 && (
+                                    <Signal type="good" text="Strong on-time track record" />
+                                )}
+                                {stats && stats.reliabilityScore >= 85 && totalTerminal >= 5 && (
+                                    <Signal type="good" text="Top performer — highly reliable" />
+                                )}
+                            </div>
                         )}
                     </div>
-
-                    {/* Path goal */}
-                    {onboarding && (
-                        <div style={{
-                            padding: "1.125rem 1.25rem", borderRadius: "11px",
-                            border: "0.5px solid var(--border)", background: "var(--surface)",
-                        }}>
-                            <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)", marginBottom: "6px" }}>
-                                Learning goal
-                            </p>
-                            <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>
-                                {onboarding.goal.charAt(0).toUpperCase() + onboarding.goal.slice(1).replace(/([A-Z])/g, ' $1')}
-                            </p>
-                            <div style={{ marginTop: "10px" }}>
-                                <Link href="/onboarding" style={{
-                                    fontSize: "11px", color: "var(--muted)", textDecoration: "none",
-                                }}>
-                                    Change path →
-                                </Link>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
+
+            {/* ── Stats grid ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard
+                    label="Completed"
+                    value={stats?.tasksCompleted ?? 0}
+                    sub="on time"
+                    color="#22c55e"
+                />
+                <StatCard
+                    label="Late"
+                    value={stats?.tasksLate ?? 0}
+                    sub="past deadline"
+                    color="#fb923c"
+                />
+                <StatCard
+                    label="Missed"
+                    value={stats?.tasksMissed ?? 0}
+                    sub="no submission"
+                    color="#ef4444"
+                />
+                <StatCard
+                    label="Rejected"
+                    value={stats?.tasksRejected ?? 0}
+                    sub="quality fail"
+                    color="#f59e0b"
+                />
+            </div>
+
+            {/* ── Rate bars ── */}
+            <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex flex-col gap-4">
+                <RateBar
+                    label="On-time rate"
+                    value={stats?.onTimeRate ?? 100}
+                    color="#22c55e"
+                    tip="Percentage of tasks submitted before their deadline"
+                />
+                <RateBar
+                    label="Reliability score"
+                    value={stats?.reliabilityScore ?? 100}
+                    color={tier.color}
+                    tip="Weighted across all outcomes — on-time, late, missed, rejected"
+                />
+                {totalTerminal > 0 && (
+                    <RateBar
+                        label="Completion rate"
+                        value={parseFloat(((
+                            (stats?.tasksCompleted ?? 0) + (stats?.tasksLate ?? 0)
+                        ) / totalTerminal * 100).toFixed(1))}
+                        color="#60a5fa"
+                        tip="Tasks that reached DONE or LATE (submitted, regardless of timing)"
+                    />
+                )}
+            </div>
+
+            {/* ── Active tasks ── */}
+            {user.assignedTasks.length > 0 && (
+                <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                    <p className="text-xs font-medium text-[var(--text)] mb-3 uppercase tracking-wider">Active tasks</p>
+                    <div className="flex flex-col gap-2">
+                        {user.assignedTasks.map(task => {
+                            const overdue = task.dueDate && new Date(task.dueDate) < new Date();
+                            return (
+                                <Link
+                                    key={task.id}
+                                    href={`/projects/${task.projectId}/board`}
+                                    className="flex items-center gap-3 py-2 px-3 rounded-xl border border-[var(--border)] hover:border-[var(--muted)] no-underline transition-colors"
+                                >
+                                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0 ${task.status === "SUBMITTED" ? "bg-amber-500/10 text-amber-400" :
+                                            task.status === "IN_PROGRESS" ? "bg-blue-500/10 text-blue-400" :
+                                                "bg-[var(--surface2)] text-[var(--muted)]"
+                                        }`}>{task.status.replace("_", " ")}</span>
+                                    <span className="text-xs text-[var(--text)] flex-1 truncate">{task.title}</span>
+                                    <span className="text-xs text-[var(--muted)] flex-shrink-0 truncate max-w-[100px]">{task.project.title}</span>
+                                    {task.dueDate && (
+                                        <span className={`text-[10px] flex-shrink-0 ${overdue ? "text-red-400 font-medium" : "text-[var(--muted)]"}`}>
+                                            {overdue ? "⚠ " : ""}{new Date(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                        </span>
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Projects ── */}
+            {user.teams.length > 0 && (
+                <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                    <p className="text-xs font-medium text-[var(--text)] mb-3 uppercase tracking-wider">Projects</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {user.teams.map(t => {
+                            const STATUS_COLORS: Record<string, string> = {
+                                OPEN: "#22c55e", IN_PROGRESS: "#378ADD", CLOSED: "#666",
+                                COMPLETED: "#639922", TERMINATED: "#e24b4a",
+                            };
+                            return (
+                                <Link
+                                    key={t.id}
+                                    href={`/projects/${t.project.id}`}
+                                    className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl border border-[var(--border)] hover:border-[var(--muted)] no-underline transition-colors"
+                                >
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium text-[var(--text)] truncate">{t.project.title}</p>
+                                        <p className="text-[10px] text-[var(--muted)] uppercase tracking-wider mt-0.5">{t.role}</p>
+                                    </div>
+                                    <span className="text-[9px] font-medium flex-shrink-0 uppercase" style={{ color: STATUS_COLORS[t.project.status] ?? "#666" }}>
+                                        {t.project.status}
+                                    </span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Empty state ── */}
+            {user.teams.length === 0 && user.assignedTasks.length === 0 && (
+                <div className="py-12 rounded-2xl border border-[var(--border)] border-dashed flex flex-col items-center gap-3">
+                    <p className="text-sm text-[var(--muted)]">No project activity yet</p>
+                    <Link href="/projects" className="text-xs text-[var(--accent)] no-underline hover:underline">
+                        Browse projects →
+                    </Link>
+                </div>
+            )}
+
+        </div>
+    );
+}
+
+/* ── Sub-components ── */
+
+function StatCard({ label, value, sub, color }: { label: string; value: number; sub: string; color: string }) {
+    return (
+        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] flex flex-col gap-1">
+            <span className="text-2xl font-bold" style={{ color: value === 0 ? "var(--muted)" : color }}>
+                {value}
+            </span>
+            <span className="text-xs font-medium text-[var(--text)]">{label}</span>
+            <span className="text-[10px] text-[var(--muted)]">{sub}</span>
+        </div>
+    );
+}
+
+function RateBar({ label, value, color, tip }: { label: string; value: number; color: string; tip: string }) {
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-[var(--text)]">{label}</span>
+                <span className="text-xs font-semibold" style={{ color }}>{value}%</span>
+            </div>
+            <div className="h-1.5 bg-[var(--surface2)] rounded-full overflow-hidden" title={tip}>
+                <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${value}%`, background: color }}
+                />
+            </div>
+        </div>
+    );
+}
+
+function Signal({ type, text }: { type: "good" | "warn"; text: string }) {
+    return (
+        <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] ${type === "good" ? "text-green-400" : "text-amber-400"}`}>
+                {type === "good" ? "✓" : "⚠"}
+            </span>
+            <span className="text-[11px] text-[var(--muted)]">{text}</span>
         </div>
     );
 }

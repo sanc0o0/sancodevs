@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 interface Props {
     applicationId: string;
@@ -11,86 +10,102 @@ interface Props {
     userName: string;
     userEmail: string;
     projectTitle: string;
+    onResponded?: () => void; // ← NEW: called after accept or reject so parent can remove the row
 }
 
-export default function ApplicantActions({ applicationId, userId, projectId, currentStatus, userName, projectTitle }: Props) {
-    const router = useRouter();
+export default function ApplicantActions({
+    applicationId,
+    userId,
+    projectId,
+    currentStatus,
+    userName,
+    userEmail,
+    projectTitle,
+    onResponded,
+}: Props) {
+    const [status, setStatus] = useState(currentStatus);
     const [loading, setLoading] = useState<"accept" | "reject" | null>(null);
-    const [rejectOpen, setRejectOpen] = useState(false);
-    const [rejectMessage, setRejectMessage] = useState("");
 
-    if (currentStatus === "ACCEPTED") {
-        return <span style={{ fontSize: "11px", color: "#22c55e", padding: "4px 10px", borderRadius: "20px", border: "0.5px solid #22c55e" }}>Accepted</span>;
-    }
-    if (currentStatus === "REJECTED") {
-        return <span style={{ fontSize: "11px", color: "#666", padding: "4px 10px", borderRadius: "20px", border: "0.5px solid var(--border)" }}>Rejected</span>;
-    }
-
-    async function handle(action: "accept" | "reject") {
+    async function respond(action: "accept" | "reject") {
         setLoading(action);
-        await fetch("/api/projects/applications", {
+        const res = await fetch("/api/projects/applications", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                applicationId, action, projectId, userId,
-                message: action === "reject" ? rejectMessage : undefined,
-                projectTitle, userName,
+                applicationId,
+                action,
+                userId,
+                projectId,
+                userName,
+                userEmail,
+                projectTitle,
             }),
         });
+
+        if (res.ok) {
+            setStatus(action === "accept" ? "ACCEPTED" : "REJECTED");
+            // Remove row from parent after short delay so user sees the feedback
+            setTimeout(() => onResponded?.(), 600);
+        }
+
         setLoading(null);
-        setRejectOpen(false);
-        router.refresh();
+    }
+
+    // Already responded — show brief status badge (will disappear when row is removed)
+    if (status === "ACCEPTED") {
+        return (
+            <span style={{
+                fontSize: "11px", padding: "4px 10px", borderRadius: "6px",
+                background: "rgba(34,197,94,0.1)", color: "#22c55e",
+                border: "0.5px solid rgba(34,197,94,0.25)",
+                fontWeight: 500, flexShrink: 0,
+            }}>
+                Accepted
+            </span>
+        );
+    }
+
+    if (status === "REJECTED") {
+        return (
+            <span style={{
+                fontSize: "11px", padding: "4px 10px", borderRadius: "6px",
+                background: "rgba(239,68,68,0.08)", color: "#ef4444",
+                border: "0.5px solid rgba(239,68,68,0.2)",
+                fontWeight: 500, flexShrink: 0,
+            }}>
+                Rejected
+            </span>
+        );
     }
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
-            <div style={{ display: "flex", gap: "6px" }}>
-                <button
-                    onClick={() => handle("accept")}
-                    disabled={loading !== null}
-                    style={{
-                        padding: "6px 14px", borderRadius: "7px", fontSize: "12px",
-                        background: "#22c55e", color: "#fff", border: "none",
-                        cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1,
-                    }}
-                >
-                    {loading === "accept" ? "..." : "Accept"}
-                </button>
-                <button
-                    onClick={() => setRejectOpen(o => !o)}
-                    disabled={loading !== null}
-                    style={{
-                        padding: "6px 14px", borderRadius: "7px", fontSize: "12px",
-                        border: "0.5px solid var(--border)", background: "transparent",
-                        color: "var(--muted)", cursor: loading ? "not-allowed" : "pointer",
-                    }}
-                >
-                    Reject
-                </button>
-            </div>
-            {rejectOpen && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
-                    <textarea
-                        value={rejectMessage}
-                        onChange={e => setRejectMessage(e.target.value)}
-                        placeholder="Optional message to the applicant..."
-                        rows={2}
-                        className="form-input"
-                        style={{ resize: "none", fontSize: "12px" }}
-                    />
-                    <button
-                        onClick={() => handle("reject")}
-                        disabled={loading !== null}
-                        style={{
-                            padding: "6px", borderRadius: "7px", fontSize: "12px",
-                            background: "#e24b4a", color: "#fff", border: "none",
-                            cursor: loading ? "not-allowed" : "pointer",
-                        }}
-                    >
-                        {loading === "reject" ? "..." : "Confirm rejection"}
-                    </button>
-                </div>
-            )}
+        <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+            <button
+                onClick={() => respond("reject")}
+                disabled={loading !== null}
+                style={{
+                    padding: "5px 12px", borderRadius: "7px", fontSize: "12px",
+                    border: "0.5px solid var(--border)", background: "transparent",
+                    color: "var(--muted)", cursor: "pointer",
+                    opacity: loading !== null ? 0.5 : 1,
+                    transition: "all 0.15s ease",
+                }}
+            >
+                {loading === "reject" ? "···" : "Reject"}
+            </button>
+            <button
+                onClick={() => respond("accept")}
+                disabled={loading !== null}
+                style={{
+                    padding: "5px 12px", borderRadius: "7px", fontSize: "12px",
+                    border: "none", background: "var(--accent)",
+                    color: "var(--bg)", cursor: "pointer", fontWeight: 500,
+                    opacity: loading !== null ? 0.5 : 1,
+                    transition: "all 0.15s ease",
+                }}
+            >
+                {loading === "accept" ? "···" : "Accept"}
+            </button>
         </div>
     );
 }

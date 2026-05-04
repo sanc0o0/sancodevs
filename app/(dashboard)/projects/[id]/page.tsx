@@ -5,7 +5,8 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import JoinRequestButton from "./JoinRequestButton";
 import ProjectStatusControl from "../ProjectStatusControl";
-import TeamSection from "./TeamSection";
+import CopyButton from "./CopyButton";
+import AccordionSections from "./AccordionSections";
 
 export default async function ProjectDetailPage({
     params,
@@ -42,36 +43,33 @@ export default async function ProjectDetailPage({
     };
 
     return (
-        <div style={{ width:"100%" , padding: "30px"}}>
-            <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+        /*
+            max-w-5xl + mx-auto: content is nicely centered on wide screens,
+            fills the space on tablet, and is full-width on mobile.
+            p-5 md:p-8 gives breathing room.
+        */
+        <div className="w-full mx-auto p-5 md:p-8">
 
-                {/* Left: Back */}
-                <Link
-                    href="/projects"
-                    className="text-xs text-[var(--muted)] hover:text-[var(--text)] no-underline transition-colors"
-                >
+            {/* Top nav */}
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+                <Link href="/projects" className="text-xs text-[var(--muted)] hover:text-[var(--text)] no-underline transition-colors">
                     ← Back to projects
                 </Link>
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-2">
-                    <Link
-                        href={`/projects/${project.id}/board`}
-                        className="px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)] transition-colors no-underline"
-                    >
-                        View board →
-                    </Link>
-                </div>
-
+                <Link
+                    href={`/projects/${project.id}/board`}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)] transition-colors no-underline"
+                >
+                    View board →
+                </Link>
             </div>
 
             {/* Header */}
-            <div style={{ marginBottom: "2rem" }}>
-                <div style={{ width: "28px", height: "2px", background: "var(--accent)", marginBottom: "1rem" }} />
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+            <div className="mb-8">
+                <div className="w-7 h-0.5 bg-[var(--accent)] mb-4" />
+                <div className="flex items-start justify-between flex-wrap gap-4">
                     <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
-                            <h1 style={{ fontSize: "22px", fontWeight: 500, color: "var(--text)" }}>{project.title}</h1>
+                        <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                            <h1 className="text-xl font-medium text-[var(--text)]">{project.title}</h1>
                             <span style={{
                                 fontSize: "10px", padding: "3px 10px", borderRadius: "20px",
                                 border: `0.5px solid ${STATUS_COLORS[project.status] ?? "#666"}`,
@@ -79,7 +77,7 @@ export default async function ProjectDetailPage({
                                 textTransform: "uppercase", letterSpacing: "0.04em",
                             }}>{project.status}</span>
                         </div>
-                        <p style={{ fontSize: "13px", color: "var(--muted)" }}>
+                        <p className="text-xs text-[var(--muted)]">
                             Created {new Date(project.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                         </p>
                     </div>
@@ -89,177 +87,137 @@ export default async function ProjectDetailPage({
                 </div>
             </div>
 
-            <div className="project-grid " style={{
-                display: "flex", 
-                flexDirection: "row", 
-                gap: "2rem"
+            {/*
+                Two-column layout:
+                - Mobile:  stacked (main content first, Details below)
+                - Desktop: [main flex-1] | [details sidebar w-56 sticky]
+            */}
+            <div className="flex flex-col md:flex-row gap-5 md:gap-7 items-start">
 
-            }}>
+                {/* ── MAIN CONTENT ── */}
+                <div className="flex flex-col gap-4 w-full min-w-0 flex-1">
 
-                {/* Left sidebar*/}
-                <div style={{ display: "flex",  width: "100%" , flexDirection: "column", gap: "1rem" }}>
-
-                    {/* Description */}
-                    <div style={{ padding: "1.375rem", borderRadius: "11px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
-                        <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)", marginBottom: "10px" }}>About</p>
-                        <p style={{ fontSize: "14px", color: "var(--muted)", lineHeight: 1.8 }}>{project.description}</p>
+                    {/* About */}
+                    <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                        <p className="text-xs font-medium text-[var(--text)] mb-2.5">About</p>
+                        <p className="text-sm text-[var(--muted)] leading-relaxed">{project.description}</p>
                     </div>
 
-                    {/* Team members */}
-                    {project.teams.length > 0 && (
-                        <TeamSection teams={project.teams} />
-                    )}
-
-                    {/* Owner: applicants list */}
-                    {isOwner && project.applicants.length > 0 && (
-                        <div style={{ borderRadius: "11px", border: "0.5px solid var(--border)", background: "var(--surface)", overflow: "hidden" }}>
-                            <div style={{ padding: "1rem 1.375rem", borderBottom: "0.5px solid var(--border)" }}>
-                                <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)" }}>
-                                    Join requests ({project.applicants.length})
-                                </p>
+                    {/* Tech stack — shown if present */}
+                    {project.techStack && project.techStack.length > 0 && (
+                        <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                            <p className="text-xs font-medium text-[var(--text)] mb-3">Tech stack</p>
+                            <div className="flex flex-wrap gap-2">
+                                {project.techStack.map((t: string) => (
+                                    <span key={t} className="text-[10px] px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted)] bg-[var(--surface2)]">
+                                        {t}
+                                    </span>
+                                ))}
                             </div>
-                            {project.applicants.map((a, i) => (
-                                <ApplicantRow
-                                    key={a.id}
-                                    applicant={a}
-                                    isLast={i === project.applicants.length - 1}
-                                    projectId={project.id}
-                                    projectTitle={project.title}
-                                />
-                            ))}
                         </div>
                     )}
-                
-                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        
-                        {project.communityGroupId && (
-                            <Link href={`/community/${project.communityGroupId}`} style={{
-                                display: "flex", alignItems: "center", justifyContent: "space-between",
-                                padding: "1rem 1.25rem", borderRadius: "10px",
-                                border: "0.5px solid var(--border)", background: "var(--surface)",
-                                textDecoration: "none",
-                            }}>
-                                <div>
-                                    <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "2px" }}>
-                                        Project community
+
+                    {/* Team + Join requests — accordion (only one open at a time) */}
+                    <AccordionSections
+                        teams={project.teams}
+                        isOwner={isOwner}
+                        initialApplicants={project.applicants}
+                        projectId={project.id}
+                        projectTitle={project.title}
+                    />
+
+                    {/* Community link */}
+                    {project.communityGroupId && (
+                        <Link
+                            href={`/community/${project.communityGroupId}`}
+                            className="flex items-center justify-between p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] no-underline hover:border-[var(--muted)] transition-colors"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-[var(--text)] mb-0.5">Project community</p>
+                                <p className="text-xs text-[var(--muted)]">Open group chat →</p>
+                            </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                        </Link>
+                    )}
+
+                    {/* Join CTA */}
+                    {!isOwner && !isTeamMember && (
+                        <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                            {project.status === "OPEN" ? (
+                                <>
+                                    <p className="text-sm font-medium text-[var(--text)] mb-1.5">
+                                        {hasApplied ? "Request sent" : "Join this project"}
                                     </p>
-                                    <p style={{ fontSize: "11px", color: "var(--muted)" }}>
-                                        Open group chat →
+                                    <p className="text-xs text-[var(--muted)] leading-relaxed mb-3">
+                                        {hasApplied ? "Your request is pending review." : "Send a request to collaborate."}
+                                    </p>
+                                    {!hasApplied
+                                        ? <JoinRequestButton projectId={project.id} projectTitle={project.title} />
+                                        : <div className="py-2 px-3 rounded-lg text-xs border border-[var(--border)] text-[var(--muted)] bg-[var(--surface2)] text-center">Pending ···</div>
+                                    }
+                                </>
+                            ) : (
+                                <div className="text-center">
+                                    <p className="text-sm font-medium text-[var(--muted)] mb-1.5">
+                                        {project.status === "TERMINATED" ? "Project terminated" : "Not accepting members"}
+                                    </p>
+                                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                                        This project is {project.status.toLowerCase()} and not accepting new contributors.
                                     </p>
                                 </div>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                </svg>
-                            </Link>
-                        )}
-
-                        {/* Join CTA */}
-                        {!isOwner && !isTeamMember && (
-                            <div style={{ padding: "1.25rem", borderRadius: "11px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
-                                {project.status === "OPEN" ? (
-                                    <>
-                                        <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)", marginBottom: "6px" }}>
-                                            {hasApplied ? "Request sent" : "Join this project"}
-                                        </p>
-                                        <p style={{ fontSize: "12px", color: "var(--muted)", lineHeight: 1.6, marginBottom: "12px" }}>
-                                            {hasApplied ? "Your request is pending review." : "Send a request to collaborate."}
-                                        </p>
-                                        {!hasApplied
-                                            ? <JoinRequestButton projectId={project.id} projectTitle={project.title} />
-                                            : <div style={{ padding: "8px 12px", borderRadius: "7px", fontSize: "12px", border: "0.5px solid var(--border)", color: "var(--muted)", background: "var(--surface2)", textAlign: "center" }}>Pending ···</div>
-                                        }
-                                    </>
-                                ) : (
-                                    <div style={{ textAlign: "center" }}>
-                                        <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--muted)", marginBottom: "6px" }}>
-                                            {project.status === "TERMINATED" ? "Project terminated" : "Not accepting members"}
-                                        </p>
-                                        <p style={{ fontSize: "12px", color: "var(--muted)", lineHeight: 1.6 }}>
-                                            This project is {project.status.toLowerCase()} and not accepting new contributors.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                    </div>
-                
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                {/* Right sidebar — Details */}
-                <div style={{ padding: "1.25rem", width: "30%", minWidth: "200px", borderRadius: "11px", border: "0.5px solid var(--border)", background: "var(--surface)", flexShrink: 0 }}>
-                    <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text)", marginBottom: "12px" }}>Details</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        {[
-                            { label: "Status", value: project.status },
-                            { label: "Applicants", value: String(project.applicants.length) },
-                            { label: "Team size", value: String(project.teams.length) },
-                        ].map(d => (
-                            <div key={d.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span style={{ fontSize: "12px", color: "var(--muted)" }}>{d.label}</span>
-                                <span style={{ fontSize: "12px", color: "var(--text)", fontWeight: 500 }}>{d.value}</span>
-                            </div>
-                        ))}
+                {/* ── DETAILS SIDEBAR ── sticky on desktop, full-width on mobile ── */}
+                <div className="w-full md:w-56 md:flex-shrink-0 md:sticky md:top-6">
+                    <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                        <p className="text-xs font-medium text-[var(--text)] mb-3">Details</p>
+                        <div className="flex flex-col gap-2.5">
+                            {[
+                                { label: "Status", value: project.status },
+                                { label: "Difficulty", value: project.difficulty ?? "—" },
+                                { label: "Type", value: project.projectType ?? "—" },
+                                { label: "Time", value: project.timeToComplete ?? "—" },
+                                { label: "Applicants", value: String(project.applicants.length) },
+                                { label: "Team size", value: String(project.teams.length) },
+                            ].map(d => (
+                                <div key={d.label} className="flex items-center justify-between gap-2">
+                                    <span className="text-xs text-[var(--muted)]">{d.label}</span>
+                                    <span className="text-xs text-[var(--text)] font-medium text-right truncate max-w-[120px]">{d.value}</span>
+                                </div>
+                            ))}
 
-                        {/* Project ID — full UUID shown, client-side copy with confirmation */}
-                        <div style={{ borderTop: "0.5px solid var(--border)", paddingTop: "10px", marginTop: "2px" }}>
-                            <p style={{ fontSize: "10px", color: "var(--muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Project ID</p>
-                            <CopyButton text={project.id} displayText={project.id.slice(0, 8).toUpperCase()} />
+                            {/* External links */}
+                            {(project.projectUrl || project.repoUrl) && (
+                                <div className="border-t border-[var(--border)] pt-2.5 mt-1 flex flex-col gap-1.5">
+                                    {project.projectUrl && (
+                                        <a href={project.projectUrl} target="_blank" rel="noopener noreferrer"
+                                            className="text-xs text-[var(--accent)] no-underline hover:underline truncate">
+                                            ↗ Live project
+                                        </a>
+                                    )}
+                                    {project.repoUrl && (
+                                        <a href={project.repoUrl} target="_blank" rel="noopener noreferrer"
+                                            className="text-xs text-[var(--accent)] no-underline hover:underline truncate">
+                                            ↗ Repository
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="border-t border-[var(--border)] pt-2.5 mt-1">
+                                <p className="text-[10px] text-[var(--muted)] mb-1.5 uppercase tracking-wider">Project ID</p>
+                                <CopyButton text={project.id} displayText={project.id.slice(0, 8).toUpperCase()} />
+                            </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     );
 }
-
-function ApplicantRow({ applicant, isLast, projectId, projectTitle }: {
-    applicant: {
-        id: string; userId: string; message: string | null; status: string; createdAt: Date;
-        user: { id: string; name: string | null; email: string; image: string | null };
-    };
-    isLast: boolean;
-    projectId: string;
-    projectTitle: string;
-}) {
-    return (
-        <div style={{
-            padding: "1rem 1.375rem",
-            borderBottom: isLast ? "none" : "0.5px solid var(--border)",
-            display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-        }}>
-            <div style={{
-                width: "36px", height: "36px", borderRadius: "50%",
-                background: "var(--surface2)", border: "0.5px solid var(--border)",
-                overflow: "hidden", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-                {applicant.user.image
-                    ? <img src={applicant.user.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    : <span style={{ fontSize: "12px", color: "var(--text)" }}>{applicant.user.name?.charAt(0)}</span>
-                }
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: "13px", color: "var(--text)", marginBottom: "2px" }}>{applicant.user.name}</p>
-                <p style={{ fontSize: "11px", color: "var(--muted)" }}>{applicant.user.email}</p>
-                {applicant.message && (
-                    <p style={{ fontSize: "12px", color: "var(--muted)", marginTop: "4px", lineHeight: 1.5 }}>
-                        &quot;{applicant.message}&quot;
-                    </p>
-                )}
-            </div>
-            <ApplicantActions
-                applicationId={applicant.id}
-                userId={applicant.userId}
-                projectId={projectId}
-                currentStatus={applicant.status}
-                userName={applicant.user.name ?? "Someone"}
-                userEmail={applicant.user.email}
-                projectTitle={projectTitle}
-            />
-        </div>
-    );
-}
-
-import ApplicantActions from "./ApplicantActions";
-import CopyButton from "./CopyButton";

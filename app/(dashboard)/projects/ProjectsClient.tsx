@@ -74,6 +74,14 @@ interface Props {
     currentUserId: string;
 }
 
+const STATUS_COLORS: Record<string, string> = {
+    OPEN: "text-green-500 border-green-500/30",
+    IN_PROGRESS: "text-blue-400 border-blue-400/30",
+    CLOSED: "text-[var(--muted)] border-[var(--border)]",
+    COMPLETED: "text-emerald-500 border-emerald-500/30",
+    TERMINATED: "text-red-400 border-red-400/30",
+};
+
 export default function ProjectsClient({ initialProjects, currentUserId }: Props) {
     const router = useRouter();
     const [filters, setFilters] = useState<ActiveFilters>(emptyFilters());
@@ -96,7 +104,6 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
     }
 
     function clearAll() { setFilters(emptyFilters()); setSearch(""); }
-
     function toggleSection(key: string) {
         setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
     }
@@ -106,7 +113,6 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
     const filtered = useMemo(() => {
         let result = [...initialProjects];
 
-        // Search
         if (search.trim()) {
             const q = search.toLowerCase();
             result = result.filter(p =>
@@ -118,7 +124,6 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
             );
         }
 
-        // AND logic between categories, OR within
         if (filters.difficulty.length) result = result.filter(p => filters.difficulty.includes(p.difficulty));
         if (filters.techStack.length) result = result.filter(p => p.techStack.some(t => filters.techStack.includes(t)));
         if (filters.projectType.length) result = result.filter(p => p.projectType && filters.projectType.includes(p.projectType));
@@ -129,31 +134,23 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
         if (filters.collaborationType.length) result = result.filter(p => filters.collaborationType.includes(p.collaborationType));
         if (filters.monetization.length) result = result.filter(p => p.monetization && filters.monetization.includes(p.monetization));
 
-        // Sort
         if (sort === "popular") result.sort((a, b) => b._count.applicants - a._count.applicants);
         else result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         return result;
     }, [initialProjects, filters, search, sort]);
 
-    const STATUS_COLORS: Record<string, string> = {
-        OPEN: "text-green-500 border-green-500/30",
-        IN_PROGRESS: "text-blue-400 border-blue-400/30",
-        CLOSED: "text-[var(--muted)] border-[var(--border)]",
-        COMPLETED: "text-emerald-500 border-emerald-500/30",
-        TERMINATED: "text-red-400 border-red-400/30",
-    };
-
     return (
         <div style={{
-            height: "calc(100vh - 54px)", // account for navbar
+            height: "calc(100vh - 54px)",
             display: "flex",
             overflow: "hidden",
-            padding: "30px"
+            padding: "30px",
         }}>
             <div className="flex flex-col gap-4 h-full w-full">
+
+                {/* ── Header ── */}
                 <div className="flex flex-col gap-4 flex-shrink-0">
-                    {/* Header */}
                     <div className="flex items-end justify-between flex-wrap gap-3">
                         <div>
                             <div className="w-7 h-0.5 bg-[var(--accent)] mb-3" />
@@ -164,7 +161,9 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                             href="/projects/new"
                             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent)] text-[var(--bg)] no-underline transition-opacity hover:opacity-85 active:scale-[0.97]"
                         >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
                             New project
                         </Link>
                     </div>
@@ -201,7 +200,6 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                         <select
                             className="form-select"
                             title="Sort projects"
-                            aria-label="Sort projects"
                             value={sort}
                             onChange={e => setSort(e.target.value as "newest" | "popular")}
                             style={{ width: "140px" }}
@@ -212,10 +210,11 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                         {/* Mobile filter button */}
                         <button
                             onClick={() => setDrawerOpen(true)}
-                            className="show-mobile flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--muted)] cursor-pointer"
-                            style={{ display: "none" }}
+                            className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--muted)] cursor-pointer"
                         >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                            </svg>
                             Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
                         </button>
                     </div>
@@ -242,39 +241,29 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                     )}
                 </div>
 
-                {/* Main layout */}
+                {/* ── Main layout: filter sidebar + project list ── */}
                 <div className="flex gap-5 flex-1 min-h-0 overflow-hidden">
+
                     {/* Desktop filter sidebar */}
-                    <aside
-                        className="hidden-mobile"
-                        style={{
-                            width: "220px",
-                            flexShrink: 0,
-                            overflowY: "auto",
-                            borderRight: "0.5px solid var(--border)",
-                            padding: "1.5rem 1rem",
-                        }}
-                    >
-                        <div className="text-[11px] text-[var(--muted)] uppercase tracking-wider mb-3 flex items-center justify-between">
-                            <span>Filters</span>
+                    <aside className="hidden md:block w-52 flex-shrink-0 overflow-y-auto border-r border-[var(--border)] pr-4">
+                        <div className="flex items-center justify-between mb-3 sticky top-0 bg-[var(--bg)] py-1">
+                            <span className="text-[11px] text-[var(--muted)] uppercase tracking-wider">Filters</span>
                             {activeFilterCount > 0 && (
-                                <button onClick={clearAll} className="text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer">
-                                    Clear
+                                <button onClick={clearAll} className="text-[10px] text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer">
+                                    Clear all
                                 </button>
                             )}
                         </div>
-                        <FilterPanel filters={filters} toggleFilter={toggleFilter} expandedSections={expandedSections} toggleSection={toggleSection} />
+                        <FilterPanel
+                            filters={filters}
+                            toggleFilter={toggleFilter}
+                            expandedSections={expandedSections}
+                            toggleSection={toggleSection}
+                        />
                     </aside>
 
-                    {/* Projects list */}
-                    <div
-                        style={{
-                            flex: 1,
-                            overflowY: "auto",
-                            padding: "0.5rem 0rem",
-                            minWidth: 0,
-                        }}
-                    >
+                    {/* ── Project cards list ── */}
+                    <div className="flex-1 overflow-y-auto min-w-0">
                         {filtered.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 border border-[var(--border)] rounded-xl bg-[var(--surface)] text-center">
                                 <div className="w-7 h-0.5 bg-[var(--border)] mb-4 mx-auto" />
@@ -285,78 +274,39 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                                 </button>
                             </div>
                         ) : (
-                            filtered.map(p => {
-                                const isOwner = p.createdBy === currentUserId;
-                                return (
-                                    <div key={p.id} className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--muted)] transition-colors">
-                                        <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <p className="text-sm font-medium text-[var(--text)]">{p.title}</p>
-                                                <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wider ${STATUS_COLORS[p.status] ?? "text-[var(--muted)] border-[var(--border)]"}`}>
-                                                    {p.status}
-                                                </span>
-                                                {p.difficulty && (
-                                                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--muted)]">
-                                                        {p.difficulty}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {isOwner && (
-                                                <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--muted)]">
-                                                    Your project
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <p className="text-xs text-[var(--muted)] leading-relaxed mb-3 line-clamp-2">{p.description}</p>
-
-                                        {/* Tech stack tags */}
-                                        {p.techStack.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5 mb-3">
-                                                {p.techStack.slice(0, 5).map(t => (
-                                                    <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-[var(--surface2)] border border-[var(--border)] text-[var(--muted)]">
-                                                        {t}
-                                                    </span>
-                                                ))}
-                                                {p.techStack.length > 5 && (
-                                                    <span className="text-[10px] text-[var(--muted)]">+{p.techStack.length - 5} more</span>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <div className="flex items-center justify-between flex-wrap gap-2">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[11px] text-[var(--muted)]">{p._count.applicants} applicant{p._count.applicants !== 1 ? "s" : ""}</span>
-                                                <span className="text-[11px] text-[var(--muted)]">{p._count.teams} on team</span>
-                                                {p.timeToComplete && (
-                                                    <span className="text-[11px] text-[var(--muted)]">{p.timeToComplete}</span>
-                                                )}
-                                            </div>
-                                            <Link
-                                                href={`/projects/${p.id}`}
-                                                className="px-3 py-1.5 rounded-lg text-xs border border-[var(--border)] text-[var(--muted)] no-underline hover:border-[var(--accent)] hover:text-[var(--text)] transition-colors"
-                                            >
-                                                View →
-                                            </Link>
-                                        </div>
-                                    </div>
-                                );
-                            })
+                            /* FIX: use flex-col with gap so cards don't touch each other */
+                            <div className="flex flex-col gap-3 pb-4">
+                                {filtered.map(p => {
+                                    const isOwner = p.createdBy === currentUserId;
+                                    return (
+                                        <ProjectCard
+                                            key={p.id}
+                                            project={p}
+                                            isOwner={isOwner}
+                                        />
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
                 </div>
 
-                {/* Mobile filter drawer */}
+                {/* ── Mobile filter drawer ── */}
                 {drawerOpen && (
                     <>
-                        <div onClick={() => setDrawerOpen(false)} className="fixed inset-0 bg-black/50 z-60" />
-                        <div className="fixed inset-y-0 left-0 w-72 bg-[var(--bg)] border-r border-[var(--border)] z-70 flex flex-col" style={{ animation: "slideDown 0.2s ease" }}>
+                        <div onClick={() => setDrawerOpen(false)} className="fixed inset-0 bg-black/50 z-40" />
+                        <div className="fixed inset-y-0 left-0 w-72 bg-[var(--bg)] border-r border-[var(--border)] z-50 flex flex-col" style={{ animation: "slideDown 0.2s ease" }}>
                             <div className="flex items-center justify-between p-4 border-b border-[var(--border)] flex-shrink-0">
                                 <p className="text-sm font-medium text-[var(--text)]">Filters</p>
                                 <button onClick={() => setDrawerOpen(false)} className="text-[var(--muted)] bg-none border-none cursor-pointer text-xl">×</button>
                             </div>
                             <div className="flex-1 overflow-y-auto p-4">
-                                <FilterPanel filters={filters} toggleFilter={toggleFilter} expandedSections={expandedSections} toggleSection={toggleSection} />
+                                <FilterPanel
+                                    filters={filters}
+                                    toggleFilter={toggleFilter}
+                                    expandedSections={expandedSections}
+                                    toggleSection={toggleSection}
+                                />
                             </div>
                             <div className="p-4 border-t border-[var(--border)] flex gap-2">
                                 <button onClick={clearAll} className="flex-1 py-2 rounded-lg text-sm border border-[var(--border)] bg-transparent text-[var(--muted)] cursor-pointer">
@@ -371,10 +321,88 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                 )}
             </div>
         </div>
-
     );
 }
 
+/* ── Project Card ── */
+function ProjectCard({ project: p, isOwner }: { project: Project; isOwner: boolean }) {
+    return (
+        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--muted)] transition-colors">
+            {/* Top row */}
+            <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-[var(--text)]">{p.title}</p>
+                    {/* Status badge */}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wider ${STATUS_COLORS[p.status] ?? "text-[var(--muted)] border-[var(--border)]"}`}>
+                        {p.status.replace("_", " ")}
+                    </span>
+                    {/* Difficulty badge */}
+                    {p.difficulty && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--muted)]">
+                            {p.difficulty}
+                        </span>
+                    )}
+                </div>
+                {/* Owner / meta tags */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    {isOwner && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--muted)]">
+                            Your project
+                        </span>
+                    )}
+                    {p.collaborationType && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--muted)]">
+                            {p.collaborationType}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Description */}
+            <p className="text-xs text-[var(--muted)] leading-relaxed mb-3 line-clamp-2">{p.description}</p>
+
+            {/* Tech stack */}
+            {p.techStack.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                    {p.techStack.slice(0, 5).map(t => (
+                        <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-[var(--surface2)] border border-[var(--border)] text-[var(--muted)]">
+                            {t}
+                        </span>
+                    ))}
+                    {p.techStack.length > 5 && (
+                        <span className="text-[10px] text-[var(--muted)]">+{p.techStack.length - 5} more</span>
+                    )}
+                </div>
+            )}
+
+            {/* Bottom row */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[11px] text-[var(--muted)]">
+                        {p._count.applicants} applicant{p._count.applicants !== 1 ? "s" : ""}
+                    </span>
+                    <span className="text-[11px] text-[var(--muted)]">
+                        {p._count.teams} on team
+                    </span>
+                    {p.timeToComplete && (
+                        <span className="text-[11px] text-[var(--muted)]">{p.timeToComplete}</span>
+                    )}
+                    {p.domain && (
+                        <span className="text-[11px] text-[var(--muted)]">{p.domain}</span>
+                    )}
+                </div>
+                <Link
+                    href={`/projects/${p.id}`}
+                    className="px-3 py-1.5 rounded-lg text-xs border border-[var(--border)] text-[var(--muted)] no-underline hover:border-[var(--accent)] hover:text-[var(--text)] transition-colors"
+                >
+                    View →
+                </Link>
+            </div>
+        </div>
+    );
+}
+
+/* ── Filter panel ── */
 function FilterPanel({ filters, toggleFilter, expandedSections, toggleSection }: {
     filters: ActiveFilters;
     toggleFilter: (category: keyof ActiveFilters, value: string) => void;
@@ -382,13 +410,12 @@ function FilterPanel({ filters, toggleFilter, expandedSections, toggleSection }:
     toggleSection: (key: string) => void;
 }) {
     return (
-        <div className="flex flex-col gap-1 ">
+        <div className="flex flex-col gap-1">
             <FilterSection title="Difficulty" expanded={expandedSections.difficulty} onToggle={() => toggleSection("difficulty")}>
                 {FILTERS.difficulty.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.difficulty.includes(v)} onChange={() => toggleFilter("difficulty", v)} />
                 ))}
             </FilterSection>
-
             <FilterSection title="Tech Stack" expanded={expandedSections.techStack} onToggle={() => toggleSection("techStack")}>
                 {Object.entries(FILTERS.techStack).map(([group, techs]) => (
                     <div key={group} className="mb-3">
@@ -399,43 +426,36 @@ function FilterPanel({ filters, toggleFilter, expandedSections, toggleSection }:
                     </div>
                 ))}
             </FilterSection>
-
             <FilterSection title="Project Type" expanded={expandedSections.projectType} onToggle={() => toggleSection("projectType")}>
                 {FILTERS.projectType.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.projectType.includes(v)} onChange={() => toggleFilter("projectType", v)} />
                 ))}
             </FilterSection>
-
             <FilterSection title="Domain / Industry" expanded={expandedSections.domain} onToggle={() => toggleSection("domain")}>
                 {FILTERS.domain.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.domain.includes(v)} onChange={() => toggleFilter("domain", v)} />
                 ))}
             </FilterSection>
-
             <FilterSection title="Build Goal" expanded={expandedSections.buildGoal} onToggle={() => toggleSection("buildGoal")}>
                 {FILTERS.buildGoal.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.buildGoal.includes(v)} onChange={() => toggleFilter("buildGoal", v)} />
                 ))}
             </FilterSection>
-
             <FilterSection title="Time to Complete" expanded={expandedSections.timeToComplete} onToggle={() => toggleSection("timeToComplete")}>
                 {FILTERS.timeToComplete.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.timeToComplete.includes(v)} onChange={() => toggleFilter("timeToComplete", v)} />
                 ))}
             </FilterSection>
-
             <FilterSection title="Complexity Type" expanded={expandedSections.complexityType} onToggle={() => toggleSection("complexityType")}>
                 {FILTERS.complexityType.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.complexityType.includes(v)} onChange={() => toggleFilter("complexityType", v)} />
                 ))}
             </FilterSection>
-
             <FilterSection title="Collaboration" expanded={expandedSections.collaborationType} onToggle={() => toggleSection("collaborationType")}>
                 {FILTERS.collaborationType.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.collaborationType.includes(v)} onChange={() => toggleFilter("collaborationType", v)} />
                 ))}
             </FilterSection>
-
             <FilterSection title="Monetization" expanded={expandedSections.monetization} onToggle={() => toggleSection("monetization")}>
                 {FILTERS.monetization.map(v => (
                     <FilterCheckbox key={v} label={v} checked={filters.monetization.includes(v)} onChange={() => toggleFilter("monetization", v)} />
@@ -445,7 +465,9 @@ function FilterPanel({ filters, toggleFilter, expandedSections, toggleSection }:
     );
 }
 
-function FilterSection({ title, expanded, onToggle, children }: { title: string; expanded: boolean; onToggle: () => void; children: React.ReactNode }) {
+function FilterSection({ title, expanded, onToggle, children }: {
+    title: string; expanded: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
     return (
         <div className="border-b border-[var(--border)] py-2">
             <button
@@ -473,12 +495,7 @@ function FilterSection({ title, expanded, onToggle, children }: { title: string;
 function FilterCheckbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
     return (
         <label className="flex items-center gap-2 py-0.5 cursor-pointer group">
-            <input
-                type="checkbox"
-                checked={checked}
-                onChange={onChange}
-                className="flex-shrink-0 accent-[var(--accent)]"
-            />
+            <input type="checkbox" checked={checked} onChange={onChange} className="flex-shrink-0 accent-[var(--accent)]" />
             <span className={`text-xs transition-colors ${checked ? "text-[var(--text)]" : "text-[var(--muted)] group-hover:text-[var(--text)]"}`}>
                 {label}
             </span>
