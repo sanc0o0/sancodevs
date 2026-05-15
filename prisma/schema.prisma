@@ -17,38 +17,38 @@ model User {
   name String? @db.VarChar(50)
 
   /// Private auth identity
-  email String @unique
+  email    String  @unique
   password String?
 
   /// Profile
-  bio String? @db.VarChar(280)
-  image String?
+  bio         String? @db.VarChar(280)
+  image       String?
   bannerImage String?
 
   /// Account
-  role String @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role          String    @default("USER")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   emailVerified DateTime?
 
   /// Username management
-  usernameUpdatedAt DateTime?
-  usernameChangeCount Int @default(0)
+  usernameUpdatedAt   DateTime?
+  usernameChangeCount Int       @default(0)
 
   ///Relations
-  accounts               Account[]
-  blockedBy              Block[]                 @relation("BlockedBy")
-  blocks                 Block[]                 @relation("Blocks")
-  communityGroups        CommunityGroup[]
-  communityMembers       CommunityMember[]
-  communityMessages      CommunityMessage[]
-  receivedRequests       FriendRequest[]         @relation("ReceivedRequests")
-  sentRequests           FriendRequest[]         @relation("SentRequests")
-  user1Friendships       Friendship[]            @relation("User1Friendships")
-  user2Friendships       Friendship[]            @relation("User2Friendships")
-  messageReactions       MessageReaction[]
-  messageReceipts        MessageReceipt[]
-  notifications          Notification[]
+  accounts          Account[]
+  blockedBy         Block[]            @relation("BlockedBy")
+  blocks            Block[]            @relation("Blocks")
+  communityGroups   CommunityGroup[]
+  communityMembers  CommunityMember[]
+  communityMessages CommunityMessage[]
+  receivedRequests  FriendRequest[]    @relation("ReceivedRequests")
+  sentRequests      FriendRequest[]    @relation("SentRequests")
+  user1Friendships  Friendship[]       @relation("User1Friendships")
+  user2Friendships  Friendship[]       @relation("User2Friendships")
+  messageReactions  MessageReaction[]
+  messageReceipts   MessageReceipt[]
+  notifications     Notification[]
 
   ///Projects
   createdProjects        Project[]
@@ -58,11 +58,11 @@ model User {
   teams                  TeamMember[]
 
   /// User systems
-  sessions               Session[]
-  activity               UserActivity?
-  onboarding             UserOnboarding?
-  preferences            UserPreferences?
-  stats                  UserStats?
+  sessions    Session[]
+  activity    UserActivity?
+  onboarding  UserOnboarding?
+  preferences UserPreferences?
+  stats       UserStats?
 }
 
 /// ─────────────────────────────────────────────────────────────
@@ -183,16 +183,16 @@ model Project {
   updatedAt DateTime @updatedAt
 
   /// Relations
-  owner          User                  @relation(fields: [createdBy], references: [id])
-  communityGroup CommunityGroup?       @relation(fields: [communityGroupId], references: [id])
+  owner          User            @relation(fields: [createdBy], references: [id])
+  communityGroup CommunityGroup? @relation(fields: [communityGroupId], references: [id])
 
-  milestones     Milestone[]
-  tasks          ProjectTask[]
-  applicants     ProjectApplication[]
-  members        TeamMember[]
-  updates        ProjectUpdate[]
-  resources      ProjectResource[]
-  analytics      ProjectAnalytics?
+  milestones Milestone[]
+  tasks      ProjectTask[]
+  applicants ProjectApplication[]
+  teams      TeamMember[]
+  updates    ProjectUpdate[]
+  resources  ProjectResource[]
+  analytics  ProjectAnalytics?
 
   @@index([createdBy])
   @@index([status])
@@ -327,11 +327,11 @@ model VerificationToken {
 model UserOnboarding {
   id                 String   @id @default(uuid())
   userId             String   @unique
-  mission            String   // JOIN_PROJECT | START_PROJECT | FIND_TEAM
-  domain             String   // e.g. web_dev | ai_ml | game_dev | cybersecurity
-  role               String   // e.g. frontend_dev | ml_engineer | ui_designer
-  experienceLevel    String   // BEGINNER | INTERMEDIATE | ADVANCED
-  availability       String   // WEEKEND | LIGHT | MODERATE | FULLTIME
+  mission            String // JOIN_PROJECT | START_PROJECT | FIND_TEAM
+  domain             String // e.g. web_dev | ai_ml | game_dev | cybersecurity
+  role               String // e.g. frontend_dev | ml_engineer | ui_designer
+  experienceLevel    String // BEGINNER | INTERMEDIATE | ADVANCED
+  availability       String // WEEKEND | LIGHT | MODERATE | FULLTIME
   goals              String[] // multi-select builder intent
   collaborationReady Boolean  @default(true)
   builderScore       Int      @default(0)
@@ -678,7 +678,7 @@ model UserStats {
   applicationsRejected Int @default(0)
 
   /// Cached performance metrics
-  onTimeRate Float?
+  onTimeRate       Float?
   reliabilityScore Float?
 
   /// Trust weighting
@@ -713,7 +713,7 @@ model TaskAssignmentRequest {
   createdAt DateTime @default(now())
 
   task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, userId])
 }
