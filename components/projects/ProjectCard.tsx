@@ -41,7 +41,6 @@ export interface ProjectCardProject {
 interface ProjectCardProps {
     project: ProjectCardProject;
     isOwner: boolean;
-    currentUserId: string | null;
     isMember: boolean;
     hasPending?: boolean;
 }
@@ -232,7 +231,7 @@ function AccentStrip({ color }: { color: string }) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function ProjectCard({ project: p, isOwner, currentUserId, isMember = false, hasPending = false }: ProjectCardProps) {
+export default function ProjectCard({ project: p, isOwner, isMember = false, hasPending = false }: ProjectCardProps) {
     const health = useMemo(() => getHealthLabel(p), [p]);
     const cta = useMemo(() => getCtaConfig(p, isOwner), [p, isOwner]);
     const roles = useMemo(() => parseRoles(p.lookingFor), [p.lookingFor]);
