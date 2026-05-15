@@ -41,7 +41,9 @@ export interface ProjectCardProject {
 interface ProjectCardProps {
     project: ProjectCardProject;
     isOwner: boolean;
-    currentUserId: string;
+    currentUserId: string | null;
+    isMember: boolean;
+    hasPending?: boolean;
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
@@ -64,13 +66,16 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string
 };
 
 const DOMAIN_ACCENT: Record<string, string> = {
-    web_dev: "#378ADD",
-    ai_ml: "#a78bfa",
-    game_dev: "#f472b6",
-    cybersecurity: "#22c55e",
-    devops: "#fb923c",
-    mobile: "#38bdf8",
-    data: "#facc15",
+    Education: "#378ADD",
+    Fintech: "#22c55e",
+    Health: "#f472b6",
+    "Social Media": "#a78bfa",
+    "E-commerce": "#fb923c",
+    Productivity: "#38bdf8",
+    "Developer Tools": "#facc15",
+    "AI Tools": "#a78bfa",
+    Gaming: "#f472b6",
+    "Content / Blogging": "#94a3b8",
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -227,7 +232,7 @@ function AccentStrip({ color }: { color: string }) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function ProjectCard({ project: p, isOwner, currentUserId }: ProjectCardProps) {
+export default function ProjectCard({ project: p, isOwner, currentUserId, isMember = false, hasPending = false }: ProjectCardProps) {
     const health = useMemo(() => getHealthLabel(p), [p]);
     const cta = useMemo(() => getCtaConfig(p, isOwner), [p, isOwner]);
     const roles = useMemo(() => parseRoles(p.lookingFor), [p.lookingFor]);

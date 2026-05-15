@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 
 import ProjectCard from "@/components/projects/ProjectCard";
-import type Project from "@/components/projects/ProjectCard";
+import type { ProjectCardProject } from "@/components/projects/ProjectCard";
 
 // ─── FILTER DATA ──────────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ const emptyFilters = (): ActiveFilters => ({
 // ─── PROPS ────────────────────────────────────────────────────────────────────
 
 interface Props {
-    initialProjects: Project[];
+    initialProjects: ProjectCardProject[];
     currentUserId: string;
     /** project IDs where the current user is a team member */
     memberProjectIds?: string[];

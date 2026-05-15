@@ -65,7 +65,7 @@ export async function generateUniqueUsername(email: string) {
         base = `${base}_user`;
     }
 
-    let username = base;
+    const username = base;
 
     // check direct availability
     const existing = await prisma.user.findUnique({
