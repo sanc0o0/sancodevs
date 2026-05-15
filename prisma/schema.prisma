@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,95 +8,286 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  name          String?
-  email         String    @unique
+  id String @id @default(uuid())
+
+  /// Public identity
+  username String @unique @db.VarChar(32)
+
+  /// Optional display name
+  name String? @db.VarChar(50)
+
+  /// Private auth identity
+  email String @unique
+  password String?
+
+  /// Profile
+  bio String? @db.VarChar(280)
+  image String?
+  bannerImage String?
+
+  /// Account
+  role String @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   emailVerified DateTime?
-  image         String?
-  password      String?
-  role          String    @default("USER")
-  createdAt     DateTime  @default(now())
-  stats         UserStats?
 
-  activity            UserActivity?        @relation
-  teams               TeamMember[]
-  accounts            Account[]
-  sessions            Session[]
-  onboarding          UserOnboarding?
-  progress            UserProgress[]
-  notifications       Notification[]
-  projectApplications ProjectApplication[]
-  communityGroups     CommunityGroup[]
-  communityMembers    CommunityMember[]
-  communityMessages   CommunityMessage[]
-  messageReceipts     MessageReceipt[]
-  messageReactions    MessageReaction[]
-  preferences         UserPreferences?
-  createdProjects     Project[]
-  assignedTasks       ProjectTask[]
-  sentRequests        FriendRequest[] @relation("SentRequests")
-  receivedRequests    FriendRequest[] @relation("ReceivedRequests")
-  user1Friendships    Friendship[]    @relation("User1Friendships")
-  user2Friendships    Friendship[]    @relation("User2Friendships")
-  blocks              Block[]         @relation("Blocks")
-  blockedBy           Block[]         @relation("BlockedBy")
+  /// Username management
+  usernameUpdatedAt DateTime?
+  usernameChangeCount Int @default(0)
+
+  ///Relations
+  accounts               Account[]
+  blockedBy              Block[]                 @relation("BlockedBy")
+  blocks                 Block[]                 @relation("Blocks")
+  communityGroups        CommunityGroup[]
+  communityMembers       CommunityMember[]
+  communityMessages      CommunityMessage[]
+  receivedRequests       FriendRequest[]         @relation("ReceivedRequests")
+  sentRequests           FriendRequest[]         @relation("SentRequests")
+  user1Friendships       Friendship[]            @relation("User1Friendships")
+  user2Friendships       Friendship[]            @relation("User2Friendships")
+  messageReactions       MessageReaction[]
+  messageReceipts        MessageReceipt[]
+  notifications          Notification[]
+
+  ///Projects
+  createdProjects        Project[]
+  projectApplications    ProjectApplication[]
+  assignedTasks          ProjectTask[]
   taskAssignmentRequests TaskAssignmentRequest[]
+  teams                  TeamMember[]
 
+  /// User systems
+  sessions               Session[]
+  activity               UserActivity?
+  onboarding             UserOnboarding?
+  preferences            UserPreferences?
+  stats                  UserStats?
 }
 
+/// ─────────────────────────────────────────────────────────────
+/// PROJECT
+/// Core execution unit inside Sancodevs.
+/// Not just a showcase project.
+/// This represents a real collaborative build with tasks,
+/// contributors, applications, milestones, and execution tracking.
+/// ─────────────────────────────────────────────────────────────
 model Project {
-  id                String   @id @default(uuid())
-  title             String
-  description       String
-  createdBy         String
-  status            String   @default("OPEN")
-  difficulty        String   @default("Beginner")
-  techStack         String[] @default([])
-  projectType       String?
-  domain            String?
-  buildGoal         String?
-  timeToComplete    String?
-  complexityType    String[] @default([])
-  featuresIncluded  String[] @default([])
-  collaborationType String   @default("team")
-  monetization      String?
-  lookingFor        String?
-  maxMembers        Int?
-  projectUrl        String?
-  repoUrl           String?
-  communityGroupId  String?  @unique
-  createdAt         DateTime @default(now())
+  /// Primary ID
+  id String @id @default(uuid())
 
-  teams          TeamMember[]
+  /// Public project title
+  title String
+
+  /// Short public tagline
+  /// Used in cards + discovery
+  tagline String?
+
+  /// Full detailed description
+  description String
+
+  /// Vision / why this project exists
+  vision String?
+
+  /// Problem being solved
+  problemStatement String?
+
+  /// Main outcome / mission
+  buildGoal String?
+
+  /// Who created the project
+  createdBy String
+
+  /// Project lifecycle status
+  /// DRAFT | OPEN | ACTIVE | PAUSED | COMPLETED | ARCHIVED
+  status String @default("OPEN")
+
+  /// Visibility level
+  /// PUBLIC | PRIVATE | INVITE_ONLY
+  visibility String @default("PUBLIC")
+
+  /// Project domain/category
+  /// web_dev | ai_ml | cybersecurity | game_dev etc
+  domain String?
+
+  /// Startup | SaaS | Open Source | Research | Hackathon
+  projectType String?
+
+  /// Beginner | Intermediate | Advanced
+  difficulty String @default("Beginner")
+
+  /// SOLO | TEAM
+  collaborationType String @default("TEAM")
+
+  /// Estimated duration
+  /// 1_WEEK | 1_MONTH | 3_MONTHS etc
+  estimatedDuration String?
+
+  /// Team size limit
+  maxMembers Int?
+
+  /// Current execution phase
+  /// IDEA | PLANNING | BUILDING | TESTING | LAUNCHED
+  phase String @default("IDEA")
+
+  /// Tech stack
+  techStack String[] @default([])
+
+  /// Features planned for the project
+  plannedFeatures String[] @default([])
+
+  /// Already completed features
+  completedFeatures String[] @default([])
+
+  /// Roles currently needed
+  /// frontend_dev, ui_designer, backend_dev etc
+  openRoles String[] @default([])
+
+  /// Expected contributor requirements
+  contributorExpectations String?
+
+  /// Contribution guide / workflow
+  contributionGuide String?
+
+  /// Monetization model
+  monetization String?
+
+  /// GitHub repository
+  repoUrl String?
+
+  /// Live deployed URL
+  liveUrl String?
+
+  /// Banner/thumbnail image
+  coverImage String?
+
+  /// Accent color for UI cards
+  accentColor String?
+
+  /// Whether project is actively recruiting
+  hiringOpen Boolean @default(true)
+
+  /// Featured by platform admins
+  featured Boolean @default(false)
+
+  /// Internal trust/quality score
+  qualityScore Float @default(0)
+
+  /// Community chat linked to project
+  communityGroupId String? @unique
+
+  /// Created timestamp
+  createdAt DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt DateTime @updatedAt
+
+  /// Relations
+  owner          User                  @relation(fields: [createdBy], references: [id])
+  communityGroup CommunityGroup?       @relation(fields: [communityGroupId], references: [id])
+
   milestones     Milestone[]
   tasks          ProjectTask[]
   applicants     ProjectApplication[]
-  communityGroup CommunityGroup?      @relation(fields: [communityGroupId], references: [id])
-  user           User                 @relation(fields: [createdBy], references: [id])
+  members        TeamMember[]
+  updates        ProjectUpdate[]
+  resources      ProjectResource[]
+  analytics      ProjectAnalytics?
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([domain])
+  @@index([projectType])
 }
 
+/// ─────────────────────────────────────────────────────────────
+/// PROJECT APPLICATION
+/// When a user applies to join a project.
+/// This is NOT a simple join request.
+/// It behaves more like a lightweight startup application.
+/// ─────────────────────────────────────────────────────────────
 model ProjectApplication {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
+
   projectId String
   userId    String
-  message   String?
-  status    String   @default("PENDING")
+
+  /// Why the user wants to join
+  message String?
+
+  /// Role user wants
+  desiredRole String?
+
+  /// Experience summary
+  experience String?
+
+  /// Resume/CV upload
+  resumeUrl String?
+
+  /// Portfolio link
+  portfolioUrl String?
+
+  /// GitHub profile
+  githubUrl String?
+
+  /// LinkedIn profile
+  linkedinUrl String?
+
+  /// Time commitment
+  /// WEEKENDS | PART_TIME | FULL_TIME
+  availability String?
+
+  /// Why should we accept you?
+  pitch String?
+
+  /// Application status
+  /// PENDING | REVIEWING | ACCEPTED | REJECTED
+  status String @default("PENDING")
+
+  reviewedAt DateTime?
+  reviewedBy String?
+
   createdAt DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id])
-  user    User    @relation(fields: [userId], references: [id])
+  /// Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
 }
 
+/// ─────────────────────────────────────────────────────────────
+/// TEAM MEMBER
+/// Active member inside a project.
+/// Different from applicant.
+/// ─────────────────────────────────────────────────────────────
 model TeamMember {
-  id        String @id @default(uuid())
-  userId    String
-  projectId String
-  role      String
+  id String @id @default(uuid())
 
-  user    User    @relation(fields: [userId], references: [id])
-  project Project @relation(fields: [projectId], references: [id])
+  projectId String
+  userId    String
+
+  /// frontend_dev | backend_dev | ui_designer etc
+  role String
+
+  /// OWNER | LEAD | CORE | CONTRIBUTOR
+  permissionLevel String @default("CONTRIBUTOR")
+
+  /// Joined timestamp
+  joinedAt DateTime @default(now())
+
+  /// Active/inactive tracking
+  active Boolean @default(true)
+
+  /// Contribution score
+  contributionScore Float @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
 }
 
 model Account {
@@ -117,8 +303,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id])
+  user              User    @relation(fields: [userId], references: [id])
 
   @@unique([provider, providerAccountId])
 }
@@ -128,8 +313,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model VerificationToken {
@@ -141,37 +325,18 @@ model VerificationToken {
 }
 
 model UserOnboarding {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  skills      String[]
-  goal        String
-  pathId      String
-  completedAt DateTime @default(now())
-
-  user           User   @relation(fields: [userId], references: [id])
-  readinessScore Float  @default(0)
-  userCategory   String @default("BEGINNER") // BEGINNER | INTERMEDIATE | BUILDER
-}
-
-model UserProgress {
-  id          String   @id @default(uuid())
-  userId      String
-  pathId      String
-  moduleIndex Int
-  completedAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([userId, pathId, moduleIndex])
-}
-
-model ModuleContent {
-  id          String @id @default(uuid())
-  pathId      String
-  moduleIndex Int
-  sections    Json
-
-  @@unique([pathId, moduleIndex])
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  mission            String   // JOIN_PROJECT | START_PROJECT | FIND_TEAM
+  domain             String   // e.g. web_dev | ai_ml | game_dev | cybersecurity
+  role               String   // e.g. frontend_dev | ml_engineer | ui_designer
+  experienceLevel    String   // BEGINNER | INTERMEDIATE | ADVANCED
+  availability       String   // WEEKEND | LIGHT | MODERATE | FULLTIME
+  goals              String[] // multi-select builder intent
+  collaborationReady Boolean  @default(true)
+  builderScore       Int      @default(0)
+  completedAt        DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id])
 }
 
 model ContactMessage {
@@ -204,24 +369,361 @@ model Notification {
   href      String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model UserActivity {
   id                 String   @id @default(uuid())
   userId             String   @unique
   lastSeenProjectsAt DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id])
+}
 
-  user User @relation(fields: [userId], references: [id])
+model FriendRequest {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  createdAt  DateTime @default(now())
+  receiver   User     @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender     User     @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+}
+
+model Friendship {
+  id        String   @id @default(uuid())
+  user1Id   String
+  user2Id   String
+  createdAt DateTime @default(now())
+  user1     User     @relation("User1Friendships", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2     User     @relation("User2Friendships", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  @@unique([user1Id, user2Id])
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocked   User     @relation("BlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+  blocker   User     @relation("Blocks", fields: [blockerId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+model CommunityGroup {
+  id          String             @id @default(uuid())
+  name        String
+  description String?
+  createdBy   String
+  createdAt   DateTime           @default(now())
+  isPrivate   Boolean            @default(true)
+  type        String             @default("GROUP")
+  maxMembers  Int?
+  user        User               @relation(fields: [createdBy], references: [id])
+  members     CommunityMember[]
+  messages    CommunityMessage[]
+  project     Project?
+}
+
+model MessageReceipt {
+  id        String           @id @default(uuid())
+  messageId String
+  userId    String
+  seenAt    DateTime         @default(now())
+  message   CommunityMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
+}
+
+model MessageReaction {
+  id        String           @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime         @default(now())
+  message   CommunityMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId, emoji])
+}
+
+model CommunityMessage {
+  id        String            @id @default(uuid())
+  groupId   String
+  userId    String
+  content   String?
+  createdAt DateTime          @default(now())
+  mediaType String?
+  mediaUrl  String?
+  group     CommunityGroup    @relation(fields: [groupId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
+  reactions MessageReaction[]
+  receipts  MessageReceipt[]
+}
+
+model CommunityMember {
+  id       String         @id @default(uuid())
+  groupId  String
+  userId   String
+  joinedAt DateTime       @default(now())
+  muted    Boolean        @default(false)
+  pinned   Boolean        @default(false)
+  role     MemberRole     @default(MEMBER)
+  status   MemberStatus   @default(PENDING)
+  group    CommunityGroup @relation(fields: [groupId], references: [id])
+  user     User           @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+model UserPreferences {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  prefTechs  String[] @default([])
+  prefTopics String[] @default([])
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// MILESTONE
+/// High-level execution stage.
+/// Example:
+/// - Authentication System
+/// - Payment Integration
+/// - MVP Launch
+/// ─────────────────────────────────────────────────────────────
+model Milestone {
+  id String @id @default(uuid())
+
+  projectId String
+
+  title String
+
+  description String?
+
+  /// TODO | ACTIVE | COMPLETED
+  status String @default("TODO")
+
+  /// Progress percentage
+  progress Int @default(0)
+
+  /// Order in roadmap
+  order Int @default(0)
+
+  dueDate DateTime?
+
+  createdAt DateTime @default(now())
+
+  completedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  tasks ProjectTask[]
+
+  @@index([projectId])
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// PROJECT TASK
+/// Atomic execution unit.
+/// Every contribution should map to tasks.
+/// ─────────────────────────────────────────────────────────────
+model ProjectTask {
+  id String @id @default(uuid())
+
+  projectId   String
+  milestoneId String?
+
+  /// Assigned contributor
+  assignedTo String?
+
+  title String
+
+  description String?
+
+  /// TODO | IN_PROGRESS | REVIEW | DONE
+  status String @default("TODO")
+
+  /// LOW | MEDIUM | HIGH | CRITICAL
+  priority String @default("MEDIUM")
+
+  /// frontend | backend | design | docs etc
+  category String?
+
+  /// Estimated hours
+  estimatedHours Int?
+
+  /// Complexity score
+  complexity Int?
+
+  dueDate DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  /// Submission URL
+  submissionUrl String?
+
+  /// Review feedback
+  reviewNote String?
+
+  reviewedAt DateTime?
+
+  /// Relations
+  assignee  User?      @relation(fields: [assignedTo], references: [id])
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone Milestone? @relation(fields: [milestoneId], references: [id])
+
+  assignmentRequests TaskAssignmentRequest[]
+
+  @@index([projectId])
+  @@index([assignedTo])
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// PROJECT UPDATE
+/// Timeline/log updates.
+/// Example:
+/// "Authentication completed"
+/// "Deployed staging server"
+/// ─────────────────────────────────────────────────────────────
+model ProjectUpdate {
+  id String @id @default(uuid())
+
+  projectId String
+
+  title String
+
+  content String
+
+  createdBy String
+
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// PROJECT RESOURCE
+/// Important links/files/resources.
+/// ─────────────────────────────────────────────────────────────
+model ProjectResource {
+  id String @id @default(uuid())
+
+  projectId String
+
+  /// DOCS | API | FIGMA | VIDEO | FILE
+  type String
+
+  title String
+
+  url String
+
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// PROJECT ANALYTICS
+/// Internal tracking metrics.
+/// ─────────────────────────────────────────────────────────────
+model ProjectAnalytics {
+  id String @id @default(uuid())
+
+  projectId String @unique
+
+  views Int @default(0)
+
+  applicationCount Int @default(0)
+
+  acceptanceRate Float @default(0)
+
+  completionRate Float @default(0)
+
+  engagementScore Float @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// USER STATS
+/// Execution-focused reputation system.
+/// NOT social media metrics.
+/// ─────────────────────────────────────────────────────────────
+model UserStats {
+  id String @id @default(uuid())
+
+  /// One stats record per user
+  userId String @unique
+
+  /// Execution metrics
+  tasksCompleted Int @default(0)
+  tasksRejected  Int @default(0)
+  tasksLate      Int @default(0)
+  tasksMissed    Int @default(0)
+
+  /// Project metrics
+  projectsCompleted Int @default(0)
+  projectsAbandoned Int @default(0)
+
+  /// Application analytics
+  applicationsAccepted Int @default(0)
+  applicationsRejected Int @default(0)
+
+  /// Cached performance metrics
+  onTimeRate Float?
+  reliabilityScore Float?
+
+  /// Trust weighting
+  totalTaskVolume Int @default(0)
+
+  /// Future systems
+  contributionScore Float @default(0)
+  leadershipScore   Float @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// TASK ASSIGNMENT REQUEST
+/// User requests ownership of a task.
+/// Useful for open-source style collaboration.
+/// ─────────────────────────────────────────────────────────────
+model TaskAssignmentRequest {
+  id String @id @default(uuid())
+
+  taskId String
+  userId String
+
+  /// Optional message from contributor
+  message String?
+
+  /// PENDING | ACCEPTED | REJECTED
+  status String @default("PENDING")
+
+  createdAt DateTime @default(now())
+
+  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
 }
 
 enum MemberStatus {
   PENDING
   ACTIVE
-  INVITED
   REJECTED
   LEFT
+  INVITED
 }
 
 enum MemberRole {
@@ -233,188 +735,4 @@ enum FriendStatus {
   REQUESTED
   ADDED
   BLOCKED
-}
-
-model FriendRequest {
-  id         String   @id @default(uuid())
-  senderId   String
-  receiverId String
-  createdAt  DateTime @default(now())
-
-  sender   User @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  @@unique([senderId, receiverId])
-}
-
-model Friendship {
-  id        String   @id @default(uuid())
-  user1Id   String
-  user2Id   String
-  createdAt DateTime @default(now())
-
-  user1 User @relation("User1Friendships", fields: [user1Id], references: [id], onDelete: Cascade)
-  user2 User @relation("User2Friendships", fields: [user2Id], references: [id], onDelete: Cascade)
-
-  @@unique([user1Id, user2Id])
-}
-
-model Block {
-  id        String   @id @default(uuid())
-  blockerId String
-  blockedId String
-  createdAt DateTime @default(now())
-
-  blocker User @relation("Blocks", fields: [blockerId], references: [id], onDelete: Cascade)
-  blocked User @relation("BlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
-
-  @@unique([blockerId, blockedId])
-}
-
-model CommunityGroup {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  createdBy   String
-  isPrivate   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  type        String   @default("GROUP") // GROUP | DIRECT
-  maxMembers  Int? // null = unlimited
-
-  members  CommunityMember[]
-  messages CommunityMessage[]
-  user     User               @relation(fields: [createdBy], references: [id])
-  project  Project?
-}
-
-model MessageReceipt {
-  id        String   @id @default(uuid())
-  messageId String
-  userId    String
-  seenAt    DateTime @default(now())
-
-  message CommunityMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User             @relation(fields: [userId], references: [id])
-
-  @@unique([messageId, userId])
-}
-
-model MessageReaction {
-  id        String   @id @default(uuid())
-  messageId String
-  userId    String
-  emoji     String
-  createdAt DateTime @default(now())
-
-  message CommunityMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User             @relation(fields: [userId], references: [id])
-
-  @@unique([messageId, userId, emoji])
-}
-
-model CommunityMessage {
-  id        String   @id @default(uuid())
-  groupId   String
-  userId    String
-  content   String?
-  mediaUrl  String?
-  mediaType String?
-  createdAt DateTime @default(now())
-
-  group     CommunityGroup    @relation(fields: [groupId], references: [id])
-  user      User              @relation(fields: [userId], references: [id])
-  receipts  MessageReceipt[]
-  reactions MessageReaction[]
-}
-
-model CommunityMember {
-  id       String         @id @default(uuid())
-  groupId  String
-  userId   String
-  role     MemberRole     @default(MEMBER)
-  muted    Boolean        @default(false)
-  pinned   Boolean        @default(false)
-  status   MemberStatus   @default(PENDING) // PENDING | ACTIVE | REJECTED | LEFT
-  joinedAt DateTime       @default(now())
-
-  group CommunityGroup    @relation(fields: [groupId], references: [id])
-  user  User              @relation(fields: [userId], references: [id])
-
-  @@unique([groupId, userId])
-}
-
-model UserPreferences {
-  id         String   @id @default(uuid())
-  userId     String   @unique
-  prefTechs  String[] @default([])
-  prefTopics String[] @default([])
-
-  user User @relation(fields: [userId], references: [id])
-}
-
-model Milestone {
-  id          String    @id @default(uuid())
-  projectId   String
-  title       String
-  description String?
-  dueDate     DateTime?
-  completed   Boolean   @default(false)
-  order       Int       @default(0)
-  createdAt   DateTime  @default(now())
-
-  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks   ProjectTask[]
-}
-
-model ProjectTask {
-  id              String    @id @default(uuid())
-  projectId       String
-  milestoneId     String?
-  assignedTo      String?
-  title           String
-  description     String?
-  status          String    @default("TODO") // TODO | IN_PROGRESS | REVIEW | DONE
-  priority        String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
-  dueDate         DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  submissionUrl   String?
-  submittedAt     DateTime?
-  reviewNote      String?
-  reviewedBy      String?
-  reviewedAt      DateTime?
-
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  milestone Milestone? @relation(fields: [milestoneId], references: [id])
-  assignee  User?      @relation(fields: [assignedTo], references: [id])
-
- assignmentRequests TaskAssignmentRequest[]
-  
-}
-
-model UserStats {
-  id               String   @id @default(uuid())
-  userId           String   @unique
-  tasksCompleted   Int      @default(0)
-  tasksMissed      Int      @default(0)
-  tasksLate        Int      @default(0)
-  tasksRejected    Int      @default(0)
-  reliabilityScore Float    @default(100)
-  onTimeRate       Float    @default(100)
-  updatedAt        DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model TaskAssignmentRequest {
-  id        String   @id @default(uuid())
-  taskId    String
-  userId    String
-  status    String   @default("PENDING")
-  createdAt DateTime @default(now())
-
-  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([taskId, userId])
 }
