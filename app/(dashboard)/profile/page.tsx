@@ -2,8 +2,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { getReliabilityTier } from "@/lib/scoring";
 import Link from "next/link";
+import ProfileCard from "@/components/profile/ProfileCard";
+import ReliabilityCard from "@/components/profile/ReliabilityCard";
 
 export default async function ProfilePage() {
     const session = await getServerSession(authOptions);
@@ -19,7 +20,7 @@ export default async function ProfilePage() {
                     project: { select: { id: true, title: true, status: true } },
                 },
                 orderBy: { id: "desc" },
-                take: 6,
+                take: 10,
             },
             assignedTasks: {
                 where: { status: { in: ["TODO", "IN_PROGRESS", "SUBMITTED"] } },
@@ -33,276 +34,294 @@ export default async function ProfilePage() {
     if (!user) redirect("/login");
 
     const stats = user.stats;
-    const tier = stats ? getReliabilityTier(stats.reliabilityScore) : getReliabilityTier(100);
+    const ob = user.onboarding;
+    const score = stats?.reliabilityScore ?? 100;
     const totalTerminal = stats
         ? stats.tasksCompleted + stats.tasksLate + stats.tasksMissed + stats.tasksRejected
         : 0;
 
-    // Circumference for the ring SVG
-    const RING_R = 44;
-    const RING_C = 2 * Math.PI * RING_R;
-    const score = stats?.reliabilityScore ?? 100;
-    const ringOffset = RING_C - (score / 100) * RING_C;
+    // ── ProfileCard data ──────────────────────────────────────────────────────
+    const cardProjects = user.teams.map(t => ({
+        id: t.project.id,
+        title: t.project.title,
+        status: t.project.status,
+        role: t.role,
+    }));
+
+    const domainLabel = ob?.domain?.replace(/_/g, " ") ?? null;
+    const roleLabel = ob?.role?.replace(/_/g, " ") ?? null;
+    const expLabel = ob?.experienceLevel
+        ? ob.experienceLevel.charAt(0) + ob.experienceLevel.slice(1).toLowerCase()
+        : null;
+    const availLabel = ob?.availability
+        ? (({ WEEKEND: "Weekends only", LIGHT: "Light — 1–2 hrs/day", MODERATE: "Moderate — 3–5 hrs/day", FULLTIME: "Full-time" }) as Record<string, string>)[ob.availability] ?? ob.availability
+        : null;
+    const missionLabel = ob?.mission
+        ? (({ JOIN_PROJECT: "Looking to join projects", START_PROJECT: "Building my own project", FIND_TEAM: "Finding a team" }) as Record<string, string>)[ob.mission] ?? ob.mission
+        : null;
+
+    // ── ReliabilityCard data ──────────────────────────────────────────────────
+    const reliabilityData = {
+        reliabilityScore: stats?.reliabilityScore ?? 100,
+        onTimeRate: stats?.onTimeRate ?? 100,
+        tasksCompleted: stats?.tasksCompleted ?? 0,
+        tasksLate: stats?.tasksLate ?? 0,
+        tasksMissed: stats?.tasksMissed ?? 0,
+        tasksRejected: stats?.tasksRejected ?? 0,
+    };
+
+    const STATUS_COLORS: Record<string, string> = {
+        OPEN: "#22c55e", IN_PROGRESS: "#378ADD", CLOSED: "#666",
+        COMPLETED: "#639922", TERMINATED: "#e24b4a",
+    };
 
     return (
-        <div className="w-full max-w-3xl mx-auto p-5 md:p-8 flex flex-col gap-6">
+        <>
+            <style>{`
+                .prof-wrap  { width: 100%; margin: 0 auto; padding: 20px 16px 60px; }
+                .prof-grid  { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+                .prof-left  { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 12px; }
+                .prof-right { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+                @media (max-width: 880px) {
+                    .prof-grid { grid-template-columns: 1fr; }
+                    .prof-left { position: static; }
+                }
+            `}</style>
 
-            {/* ── Identity card ── */}
-            <div className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-                <div className="w-14 h-14 rounded-full bg-[var(--surface2)] border border-[var(--border)] overflow-hidden flex-shrink-0 flex items-center justify-center">
-                    {user.image
-                        ? <img src={user.image} alt="" className="w-full h-full object-cover" />
-                        : <span className="text-lg font-semibold text-[var(--text)]">{user.name?.charAt(0)}</span>
-                    }
-                </div>
-                <div className="flex-1 min-w-0">
-                    <p className="text-base font-semibold text-[var(--text)] truncate">{user.name}</p>
-                    <p className="text-xs text-[var(--muted)] truncate">{user.email}</p>
-                    {user.onboarding && (
-                        <p className="text-[10px] text-[var(--muted)] mt-1 uppercase tracking-wider">
-                            {user.onboarding.userCategory} · {user.onboarding.skills.slice(0, 3).join(", ")}
-                        </p>
-                    )}
-                </div>
-                <Link
-                    href="/settings"
-                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--muted)] no-underline transition-colors flex-shrink-0"
-                >
-                    Settings
-                </Link>
-            </div>
+            <div className="prof-wrap">
+                <div className="prof-grid">
 
-            {/* ── Reliability score — the main metric ── */}
-            <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-                <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-4">Reliability Score</p>
+                    {/* ══ LEFT — identity card + supporting sections ══ */}
+                    <div className="prof-left">
 
-                <div className="flex items-center gap-6 flex-wrap">
-                    {/* Ring */}
-                    <div className="relative flex-shrink-0">
-                        <svg width="110" height="110" viewBox="0 0 110 110">
-                            {/* Track */}
-                            <circle
-                                cx="55" cy="55" r={RING_R}
-                                fill="none"
-                                stroke="var(--surface2)"
-                                strokeWidth="8"
-                            />
-                            {/* Score arc */}
-                            <circle
-                                cx="55" cy="55" r={RING_R}
-                                fill="none"
-                                stroke={tier.color}
-                                strokeWidth="8"
-                                strokeLinecap="round"
-                                strokeDasharray={RING_C}
-                                strokeDashoffset={ringOffset}
-                                transform="rotate(-90 55 55)"
-                                style={{ transition: "stroke-dashoffset 0.6s ease" }}
-                            />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-2xl font-bold text-[var(--text)]">{score}</span>
-                            <span className="text-[9px] text-[var(--muted)] uppercase tracking-wider">/ 100</span>
-                        </div>
-                    </div>
+                        {/* ProfileCard */}
+                        <ProfileCard
+                            name={user.name ?? "Builder"}
+                            email={user.email}
+                            image={user.image}
+                            role={roleLabel}
+                            domain={domainLabel}
+                            experienceLevel={ob?.experienceLevel ?? null}
+                            availability={availLabel}
+                            mission={missionLabel}
+                            projects={cardProjects}
+                            reliabilityScore={score}
+                            builderScore={ob?.builderScore}
+                            isOwner={true}
+                        />
 
-                    {/* Tier info */}
-                    <div className="flex flex-col gap-2 flex-1 min-w-0">
-                        <div>
-                            <span className="text-sm font-semibold" style={{ color: tier.color }}>{tier.label}</span>
-                            <p className="text-xs text-[var(--muted)] mt-0.5">{tier.description}</p>
-                        </div>
+                        {/* Builder identity */}
+                        <Section label="Builder identity">
+                            {ob ? (
+                                <>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                        {[
+                                            { text: domainLabel, strong: true },
+                                            { text: roleLabel, strong: true },
+                                            { text: expLabel, strong: false },
+                                            { text: availLabel, strong: false },
+                                            ...(ob.goals ?? []).map(g => ({ text: g.replace(/_/g, " "), strong: false })),
+                                        ].filter(x => x.text).map((x, i) => (
+                                            <span key={i} style={{
+                                                fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                                                border: "0.5px solid var(--border)",
+                                                color: x.strong ? "var(--text)" : "var(--muted)",
+                                                background: x.strong ? "var(--surface2)" : "transparent",
+                                                textTransform: "capitalize",
+                                            }}>
+                                                {x.text}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <div style={{ marginTop: 10 }}>
+                                        <Link href="/onboarding" style={{ fontSize: 11, color: "var(--muted)", textDecoration: "none" }} className="link-hover">
+                                            Update onboarding →
+                                        </Link>
+                                    </div>
+                                </>
+                            ) : (
+                                <div>
+                                    <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+                                        Complete onboarding to set your builder identity.
+                                    </p>
+                                    <Link href="/onboarding" style={{ fontSize: 11, color: "var(--accent)", textDecoration: "none" }}>
+                                        Complete setup →
+                                    </Link>
+                                </div>
+                            )}
+                        </Section>
 
-                        {/* Signals */}
-                        {totalTerminal === 0 ? (
-                            <p className="text-xs text-[var(--muted)] italic">No tasks completed yet — score will update as you work.</p>
-                        ) : (
-                            <div className="flex flex-col gap-1">
-                                {stats && stats.tasksMissed >= 3 && (
-                                    <Signal type="warn" text={`Missed ${stats.tasksMissed} deadlines`} />
-                                )}
-                                {stats && stats.tasksRejected >= 2 && (
-                                    <Signal type="warn" text={`${stats.tasksRejected} tasks rejected`} />
-                                )}
-                                {stats && stats.onTimeRate >= 90 && totalTerminal >= 3 && (
-                                    <Signal type="good" text="Strong on-time track record" />
-                                )}
-                                {stats && stats.reliabilityScore >= 85 && totalTerminal >= 5 && (
-                                    <Signal type="good" text="Top performer — highly reliable" />
+                        {/* Achievements */}
+                        <Section label="Achievements">
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {totalTerminal >= 1 && <Badge label="First task" />}
+                                {(stats?.tasksCompleted ?? 0) >= 10 && <Badge label="10 tasks done" />}
+                                {(stats?.tasksCompleted ?? 0) >= 30 && <Badge label="30 tasks done" />}
+                                {(stats?.tasksMissed ?? 0) === 0 && totalTerminal >= 5 && <Badge label="Zero missed" />}
+                                {score >= 90 && totalTerminal >= 5 && <Badge label="Top performer" />}
+                                {user.teams.length >= 3 && <Badge label="Multi-project" />}
+                                {totalTerminal === 0 && (
+                                    <p style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", margin: 0 }}>
+                                        Complete tasks to earn badges.
+                                    </p>
                                 )}
                             </div>
+                            <Placeholder label="team leader · fast reviewer · consistency streak · startup founder" />
+                        </Section>
+
+                    </div>
+
+                    {/* ══ RIGHT — execution data ══ */}
+                    <div className="prof-right">
+
+                        {/* ReliabilityCard */}
+                        <ReliabilityCard data={reliabilityData} />
+
+                        {/* Active tasks */}
+                        {user.assignedTasks.length > 0 && (
+                            <Section label="Active tasks">
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    {user.assignedTasks.map(task => {
+                                        const overdue = task.dueDate && new Date(task.dueDate) < new Date();
+                                        return (
+                                            <Link key={task.id} href={`/projects/${task.projectId}/board`} style={{ textDecoration: "none" }}>
+                                                <div className="card-hover" style={{
+                                                    display: "flex", alignItems: "center", gap: 10,
+                                                    padding: "9px 12px", borderRadius: 8,
+                                                    border: "0.5px solid var(--border)", background: "var(--surface2)",
+                                                }}>
+                                                    <span style={{
+                                                        fontSize: 9, fontWeight: 600, padding: "2px 7px",
+                                                        borderRadius: 4, textTransform: "uppercase", flexShrink: 0,
+                                                        background: task.status === "SUBMITTED" ? "rgba(251,191,36,0.1)" :
+                                                            task.status === "IN_PROGRESS" ? "rgba(55,138,221,0.1)" : "var(--surface)",
+                                                        color: task.status === "SUBMITTED" ? "#fbbf24" :
+                                                            task.status === "IN_PROGRESS" ? "#378ADD" : "var(--muted)",
+                                                    }}>
+                                                        {task.status.replace("_", " ")}
+                                                    </span>
+                                                    <span style={{ fontSize: 12, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                        {task.title}
+                                                    </span>
+                                                    <span style={{ fontSize: 10, color: "var(--muted)", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 100, whiteSpace: "nowrap" }}>
+                                                        {task.project.title}
+                                                    </span>
+                                                    {task.dueDate && (
+                                                        <span style={{ fontSize: 10, color: overdue ? "#ef4444" : "var(--muted)", flexShrink: 0 }}>
+                                                            {overdue ? "⚠ " : ""}{new Date(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </Section>
                         )}
-                    </div>
-                </div>
-            </div>
 
-            {/* ── Stats grid ── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard
-                    label="Completed"
-                    value={stats?.tasksCompleted ?? 0}
-                    sub="on time"
-                    color="#22c55e"
-                />
-                <StatCard
-                    label="Late"
-                    value={stats?.tasksLate ?? 0}
-                    sub="past deadline"
-                    color="#fb923c"
-                />
-                <StatCard
-                    label="Missed"
-                    value={stats?.tasksMissed ?? 0}
-                    sub="no submission"
-                    color="#ef4444"
-                />
-                <StatCard
-                    label="Rejected"
-                    value={stats?.tasksRejected ?? 0}
-                    sub="quality fail"
-                    color="#f59e0b"
-                />
-            </div>
+                        {/* Project history */}
+                        {user.teams.length > 0 && (
+                            <Section label={`Project history (${user.teams.length})`}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    {user.teams.map(t => (
+                                        <Link key={t.id} href={`/projects/${t.project.id}`} style={{ textDecoration: "none" }}>
+                                            <div className="card-hover" style={{
+                                                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                                                padding: "10px 14px", borderRadius: 8,
+                                                border: "0.5px solid var(--border)", background: "var(--surface2)",
+                                            }}>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <p style={{ fontSize: 12, fontWeight: 500, color: "var(--text)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                        {t.project.title}
+                                                    </p>
+                                                    <p style={{ fontSize: 10, color: "var(--muted)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                                        {t.role}
+                                                    </p>
+                                                </div>
+                                                <span style={{
+                                                    fontSize: 9, fontWeight: 600, flexShrink: 0, textTransform: "uppercase",
+                                                    color: STATUS_COLORS[t.project.status] ?? "#666",
+                                                }}>
+                                                    {t.project.status.replace("_", " ")}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                                <Placeholder label="contribution % · owner feedback · demo / repo links" />
+                            </Section>
+                        )}
 
-            {/* ── Rate bars ── */}
-            <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex flex-col gap-4">
-                <RateBar
-                    label="On-time rate"
-                    value={stats?.onTimeRate ?? 100}
-                    color="#22c55e"
-                    tip="Percentage of tasks submitted before their deadline"
-                />
-                <RateBar
-                    label="Reliability score"
-                    value={stats?.reliabilityScore ?? 100}
-                    color={tier.color}
-                    tip="Weighted across all outcomes — on-time, late, missed, rejected"
-                />
-                {totalTerminal > 0 && (
-                    <RateBar
-                        label="Completion rate"
-                        value={parseFloat(((
-                            (stats?.tasksCompleted ?? 0) + (stats?.tasksLate ?? 0)
-                        ) / totalTerminal * 100).toFixed(1))}
-                        color="#60a5fa"
-                        tip="Tasks that reached DONE or LATE (submitted, regardless of timing)"
-                    />
-                )}
-            </div>
+                        {/* Contribution timeline */}
+                        <Section label="Contribution timeline">
+                            <Placeholder label="activity graph · task streaks · reviews done · teams formed" />
+                        </Section>
 
-            {/* ── Active tasks ── */}
-            {user.assignedTasks.length > 0 && (
-                <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-                    <p className="text-xs font-medium text-[var(--text)] mb-3 uppercase tracking-wider">Active tasks</p>
-                    <div className="flex flex-col gap-2">
-                        {user.assignedTasks.map(task => {
-                            const overdue = task.dueDate && new Date(task.dueDate) < new Date();
-                            return (
-                                <Link
-                                    key={task.id}
-                                    href={`/projects/${task.projectId}/board`}
-                                    className="flex items-center gap-3 py-2 px-3 rounded-xl border border-[var(--border)] hover:border-[var(--muted)] no-underline transition-colors"
-                                >
-                                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0 ${task.status === "SUBMITTED" ? "bg-amber-500/10 text-amber-400" :
-                                            task.status === "IN_PROGRESS" ? "bg-blue-500/10 text-blue-400" :
-                                                "bg-[var(--surface2)] text-[var(--muted)]"
-                                        }`}>{task.status.replace("_", " ")}</span>
-                                    <span className="text-xs text-[var(--text)] flex-1 truncate">{task.title}</span>
-                                    <span className="text-xs text-[var(--muted)] flex-shrink-0 truncate max-w-[100px]">{task.project.title}</span>
-                                    {task.dueDate && (
-                                        <span className={`text-[10px] flex-shrink-0 ${overdue ? "text-red-400 font-medium" : "text-[var(--muted)]"}`}>
-                                            {overdue ? "⚠ " : ""}{new Date(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                                        </span>
-                                    )}
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {/* ── Projects ── */}
-            {user.teams.length > 0 && (
-                <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-                    <p className="text-xs font-medium text-[var(--text)] mb-3 uppercase tracking-wider">Projects</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {user.teams.map(t => {
-                            const STATUS_COLORS: Record<string, string> = {
-                                OPEN: "#22c55e", IN_PROGRESS: "#378ADD", CLOSED: "#666",
-                                COMPLETED: "#639922", TERMINATED: "#e24b4a",
-                            };
-                            return (
-                                <Link
-                                    key={t.id}
-                                    href={`/projects/${t.project.id}`}
-                                    className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl border border-[var(--border)] hover:border-[var(--muted)] no-underline transition-colors"
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium text-[var(--text)] truncate">{t.project.title}</p>
-                                        <p className="text-[10px] text-[var(--muted)] uppercase tracking-wider mt-0.5">{t.role}</p>
+                        {/* Team reputation */}
+                        <Section label="Team reputation">
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
+                                {["Communication", "Execution", "Ownership"].map(r => (
+                                    <div key={r} style={{ padding: "10px 8px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--surface2)", textAlign: "center" }}>
+                                        <p style={{ fontSize: 15, fontWeight: 700, color: "var(--muted)", margin: 0 }}>—</p>
+                                        <p style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 3 }}>{r}</p>
                                     </div>
-                                    <span className="text-[9px] font-medium flex-shrink-0 uppercase" style={{ color: STATUS_COLORS[t.project.status] ?? "#666" }}>
-                                        {t.project.status}
-                                    </span>
-                                </Link>
-                            );
-                        })}
+                                ))}
+                            </div>
+                            <Placeholder label="structured ratings from teammates · project owner feedback" />
+                        </Section>
+
+                        {/* Links */}
+                        <Section label="Links">
+                            <Placeholder label="GitHub · LinkedIn · portfolio · Twitter/X" />
+                        </Section>
+
+                        {/* Empty state */}
+                        {user.teams.length === 0 && user.assignedTasks.length === 0 && (
+                            <div style={{ padding: "32px 20px", borderRadius: 10, border: "0.5px dashed var(--border)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                                <p style={{ fontSize: 13, color: "var(--muted)" }}>No project activity yet.</p>
+                                <Link href="/projects" style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>Browse projects →</Link>
+                            </div>
+                        )}
+
                     </div>
                 </div>
-            )}
-
-            {/* ── Empty state ── */}
-            {user.teams.length === 0 && user.assignedTasks.length === 0 && (
-                <div className="py-12 rounded-2xl border border-[var(--border)] border-dashed flex flex-col items-center gap-3">
-                    <p className="text-sm text-[var(--muted)]">No project activity yet</p>
-                    <Link href="/projects" className="text-xs text-[var(--accent)] no-underline hover:underline">
-                        Browse projects →
-                    </Link>
-                </div>
-            )}
-
-        </div>
-    );
-}
-
-/* ── Sub-components ── */
-
-function StatCard({ label, value, sub, color }: { label: string; value: number; sub: string; color: string }) {
-    return (
-        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] flex flex-col gap-1">
-            <span className="text-2xl font-bold" style={{ color: value === 0 ? "var(--muted)" : color }}>
-                {value}
-            </span>
-            <span className="text-xs font-medium text-[var(--text)]">{label}</span>
-            <span className="text-[10px] text-[var(--muted)]">{sub}</span>
-        </div>
-    );
-}
-
-function RateBar({ label, value, color, tip }: { label: string; value: number; color: string; tip: string }) {
-    return (
-        <div>
-            <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-[var(--text)]">{label}</span>
-                <span className="text-xs font-semibold" style={{ color }}>{value}%</span>
             </div>
-            <div className="h-1.5 bg-[var(--surface2)] rounded-full overflow-hidden" title={tip}>
-                <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${value}%`, background: color }}
-                />
+        </>
+    );
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div style={{ border: "0.5px solid var(--border)", borderRadius: 10, background: "var(--surface)", overflow: "hidden" }}>
+            <div style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--border)" }}>
+                <p style={{ fontSize: 10, fontWeight: 500, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>
+                    {label}
+                </p>
             </div>
+            <div style={{ padding: "14px 16px" }}>{children}</div>
         </div>
     );
 }
 
-function Signal({ type, text }: { type: "good" | "warn"; text: string }) {
+function Badge({ label }: { label: string }) {
     return (
-        <div className="flex items-center gap-1.5">
-            <span className={`text-[10px] ${type === "good" ? "text-green-400" : "text-amber-400"}`}>
-                {type === "good" ? "✓" : "⚠"}
-            </span>
-            <span className="text-[11px] text-[var(--muted)]">{text}</span>
+        <span style={{
+            fontSize: 11, padding: "4px 10px", borderRadius: 6,
+            border: "0.5px solid var(--border)", color: "var(--text)", background: "var(--surface2)",
+        }}>
+            {label}
+        </span>
+    );
+}
+
+function Placeholder({ label }: { label: string }) {
+    return (
+        <div style={{ padding: "9px 12px", borderRadius: 7, border: "0.5px dashed var(--border)", background: "var(--surface2)", marginTop: 8 }}>
+            <p style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em", margin: 0 }}>
+                Coming soon — {label}
+            </p>
         </div>
     );
 }

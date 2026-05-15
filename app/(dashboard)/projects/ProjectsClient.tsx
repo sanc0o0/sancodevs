@@ -2,26 +2,11 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-const FILTERS = {
-    difficulty: ["Beginner", "Beginner+", "Intermediate", "Intermediate+", "Advanced", "Expert"],
-    techStack: {
-        Frontend: ["HTML/CSS", "JavaScript", "TypeScript", "React", "Next.js", "Vue", "Angular", "Svelte", "Tailwind CSS"],
-        Backend: ["Node.js", "Express", "NestJS", "Django", "Flask", "Spring Boot", "Go", "Rust", "FastAPI"],
-        Database: ["PostgreSQL", "MySQL", "MongoDB", "Firebase", "Supabase", "Redis", "SQLite"],
-        Mobile: ["React Native", "Flutter", "Swift", "Kotlin"],
-        "AI / ML": ["OpenAI API", "TensorFlow", "PyTorch", "LangChain", "Hugging Face"],
-        "DevOps": ["Docker", "Kubernetes", "AWS", "GCP", "Vercel", "CI/CD", "Linux"],
-    },
-    projectType: ["Web App", "Full Stack App", "API Service", "CLI Tool", "Mobile App", "Chrome Extension", "Desktop App", "Microservice"],
-    domain: ["Education", "Fintech", "Health", "Social Media", "E-commerce", "Productivity", "Developer Tools", "AI Tools", "Gaming", "Content / Blogging"],
-    buildGoal: ["Learn Basics", "Practice Concepts", "Resume Project", "Portfolio Project", "Real-world System", "Startup Idea", "Open Source Ready"],
-    timeToComplete: ["< 1 hour", "1–3 hours", "1 day", "2–3 days", "1 week", "2+ weeks"],
-    complexityType: ["CRUD App", "Authentication System", "Real-time System", "API Integration", "Payment Integration", "AI-powered", "File Handling", "Background Jobs"],
-    collaborationType: ["Solo Project", "Team Project"],
-    monetization: ["No Monetization", "Freelance Ready", "SaaS Potential", "Startup Scalable"],
-};
+import ProjectCard from "@/components/projects/ProjectCard";
+import type Project from "@/components/projects/ProjectCard";
+
+// ─── FILTER DATA ──────────────────────────────────────────────────────────────
 
 const QUICK_FILTERS = [
     { label: "Beginner Friendly", key: "difficulty", value: "Beginner" },
@@ -32,35 +17,29 @@ const QUICK_FILTERS = [
     { label: "Full Stack", key: "projectType", value: "Full Stack App" },
 ];
 
-type Project = {
-    id: string;
-    title: string;
-    description: string;
-    status: string;
-    difficulty: string;
-    techStack: string[];
-    projectType: string | null;
-    domain: string | null;
-    buildGoal: string | null;
-    timeToComplete: string | null;
-    complexityType: string[];
-    collaborationType: string;
-    monetization: string | null;
-    createdAt: string;
-    createdBy: string;
-    _count: { applicants: number; teams: number };
+const FILTERS = {
+    difficulty: ["Beginner", "Beginner+", "Intermediate", "Intermediate+", "Advanced", "Expert"],
+    techStack: {
+        Frontend: ["HTML/CSS", "JavaScript", "TypeScript", "React", "Next.js", "Vue", "Angular", "Svelte", "Tailwind CSS"],
+        Backend: ["Node.js", "Express", "NestJS", "Django", "Flask", "Spring Boot", "Go", "Rust", "FastAPI"],
+        Database: ["PostgreSQL", "MySQL", "MongoDB", "Firebase", "Supabase", "Redis", "SQLite"],
+        Mobile: ["React Native", "Flutter", "Swift", "Kotlin"],
+        "AI / ML": ["OpenAI API", "TensorFlow", "PyTorch", "LangChain", "Hugging Face"],
+        DevOps: ["Docker", "Kubernetes", "AWS", "GCP", "Vercel", "CI/CD", "Linux"],
+    },
+    projectType: ["Web App", "Full Stack App", "API Service", "CLI Tool", "Mobile App", "Chrome Extension", "Desktop App", "Microservice"],
+    domain: ["Education", "Fintech", "Health", "Social Media", "E-commerce", "Productivity", "Developer Tools", "AI Tools", "Gaming", "Content / Blogging"],
+    buildGoal: ["Learn Basics", "Practice Concepts", "Resume Project", "Portfolio Project", "Real-world System", "Startup Idea", "Open Source Ready"],
+    timeToComplete: ["< 1 hour", "1–3 hours", "1 day", "2–3 days", "1 week", "2+ weeks"],
+    complexityType: ["CRUD App", "Authentication System", "Real-time System", "API Integration", "Payment Integration", "AI-powered", "File Handling", "Background Jobs"],
+    collaborationType: ["Solo Project", "Team Project"],
+    monetization: ["No Monetization", "Freelance Ready", "SaaS Potential", "Startup Scalable"],
 };
 
 type ActiveFilters = {
-    difficulty: string[];
-    techStack: string[];
-    projectType: string[];
-    domain: string[];
-    buildGoal: string[];
-    timeToComplete: string[];
-    complexityType: string[];
-    collaborationType: string[];
-    monetization: string[];
+    difficulty: string[]; techStack: string[]; projectType: string[];
+    domain: string[]; buildGoal: string[]; timeToComplete: string[];
+    complexityType: string[]; collaborationType: string[]; monetization: string[];
 };
 
 const emptyFilters = (): ActiveFilters => ({
@@ -69,21 +48,25 @@ const emptyFilters = (): ActiveFilters => ({
     collaborationType: [], monetization: [],
 });
 
+// ─── PROPS ────────────────────────────────────────────────────────────────────
+
 interface Props {
     initialProjects: Project[];
     currentUserId: string;
+    /** project IDs where the current user is a team member */
+    memberProjectIds?: string[];
+    /** project IDs where the current user has a pending application */
+    pendingProjectIds?: string[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-    OPEN: "text-green-500 border-green-500/30",
-    IN_PROGRESS: "text-blue-400 border-blue-400/30",
-    CLOSED: "text-[var(--muted)] border-[var(--border)]",
-    COMPLETED: "text-emerald-500 border-emerald-500/30",
-    TERMINATED: "text-red-400 border-red-400/30",
-};
+// ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
-export default function ProjectsClient({ initialProjects, currentUserId }: Props) {
-    const router = useRouter();
+export default function ProjectsClient({
+    initialProjects,
+    currentUserId,
+    memberProjectIds = [],
+    pendingProjectIds = [],
+}: Props) {
     const [filters, setFilters] = useState<ActiveFilters>(emptyFilters());
     const [search, setSearch] = useState("");
     const [sort, setSort] = useState<"newest" | "popular">("newest");
@@ -118,14 +101,12 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
             result = result.filter(p =>
                 p.title.toLowerCase().includes(q) ||
                 p.description.toLowerCase().includes(q) ||
-                p.techStack.some(t => t.toLowerCase().includes(q)) ||
-                p.id.toLowerCase().includes(q) ||
-                p.id.slice(0, 8).toUpperCase().includes(search.toUpperCase())
+                p.techStack.some((t: string) => t.toLowerCase().includes(q))
             );
         }
 
         if (filters.difficulty.length) result = result.filter(p => filters.difficulty.includes(p.difficulty));
-        if (filters.techStack.length) result = result.filter(p => p.techStack.some(t => filters.techStack.includes(t)));
+        if (filters.techStack.length) result = result.filter(p => p.techStack.some((t: string )=> filters.techStack.includes(t)));
         if (filters.projectType.length) result = result.filter(p => p.projectType && filters.projectType.includes(p.projectType));
         if (filters.domain.length) result = result.filter(p => p.domain && filters.domain.includes(p.domain));
         if (filters.buildGoal.length) result = result.filter(p => p.buildGoal && filters.buildGoal.includes(p.buildGoal));
@@ -141,27 +122,25 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
     }, [initialProjects, filters, search, sort]);
 
     return (
-        <div style={{
-            height: "calc(100vh - 54px)",
-            display: "flex",
-            overflow: "hidden",
-            padding: "30px",
-        }}>
-            <div className="flex flex-col gap-4 h-full w-full">
+        <div style={{ height: "calc(100vh - 54px)", display: "flex", overflow: "hidden", padding: "24px 28px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, height: "100%", width: "100%" }}>
 
-                {/* ── Header ── */}
-                <div className="flex flex-col gap-4 flex-shrink-0">
-                    <div className="flex items-end justify-between flex-wrap gap-3">
+                {/* ── HEADER ── */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>
+
+                    {/* Title row */}
+                    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                         <div>
-                            <div className="w-7 h-0.5 bg-[var(--accent)] mb-3" />
-                            <h1 className="text-xl font-medium text-[var(--text)] mb-1">Projects</h1>
-                            <p className="text-sm text-[var(--muted)]">Commit to a project. Ship it. No half-finished demos.</p>
+                            <div style={{ width: 24, height: 2, background: "var(--accent)", marginBottom: 10 }} />
+                            <h1 style={{ fontSize: 20, fontWeight: 500, color: "var(--text)", margin: 0, marginBottom: 4 }}>Projects</h1>
+                            <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>Commit to a project. Ship it. No half-finished demos.</p>
                         </div>
                         <Link
                             href="/projects/new"
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent)] text-[var(--bg)] no-underline transition-opacity hover:opacity-85 active:scale-[0.97]"
+                            className="btn-action"
+                            style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none", fontSize: 12 }}
                         >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
                             New project
@@ -169,18 +148,20 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                     </div>
 
                     {/* Quick filter chips */}
-                    <div className="flex flex-wrap gap-2">
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                         {QUICK_FILTERS.map(qf => {
-                            const isActive = filters[qf.key as keyof ActiveFilters]?.includes(qf.value);
+                            const active = filters[qf.key as keyof ActiveFilters]?.includes(qf.value);
                             return (
                                 <button
                                     key={qf.label}
                                     onClick={() => toggleFilter(qf.key as keyof ActiveFilters, qf.value)}
-                                    className={`px-3 py-1.5 rounded-full text-xs border transition-all cursor-pointer
-                                        ${isActive
-                                            ? "border-[var(--accent)] bg-[var(--surface2)] text-[var(--text)]"
-                                            : "border-[var(--border)] bg-transparent text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)]"
-                                        }`}
+                                    style={{
+                                        padding: "5px 12px", borderRadius: 20, fontSize: 11, cursor: "pointer",
+                                        border: `0.5px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                                        background: active ? "var(--surface2)" : "transparent",
+                                        color: active ? "var(--text)" : "var(--muted)",
+                                        transition: "all 0.12s",
+                                    }}
                                 >
                                     {qf.label}
                                 </button>
@@ -189,20 +170,21 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                     </div>
 
                     {/* Search + sort + mobile filter trigger */}
-                    <div className="flex gap-3 items-center flex-wrap">
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                         <input
-                            className="form-input flex-1 min-w-[200px]"
+                            className="form-input"
                             type="text"
                             placeholder="Search projects..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
+                            style={{ flex: 1, minWidth: 180 }}
                         />
                         <select
                             className="form-select"
                             title="Sort projects"
                             value={sort}
                             onChange={e => setSort(e.target.value as "newest" | "popular")}
-                            style={{ width: "140px" }}
+                            style={{ width: 140 }}
                         >
                             <option value="newest">Newest</option>
                             <option value="popular">Most popular</option>
@@ -210,9 +192,15 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
                         {/* Mobile filter button */}
                         <button
                             onClick={() => setDrawerOpen(true)}
-                            className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--muted)] cursor-pointer"
+                            style={{
+                                display: "none", alignItems: "center", gap: 6,
+                                padding: "8px 12px", borderRadius: 8, fontSize: 12,
+                                border: "0.5px solid var(--border)", background: "transparent",
+                                color: "var(--muted)", cursor: "pointer",
+                            }}
+                            className="show-mobile"
                         >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                             </svg>
                             Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
@@ -221,99 +209,98 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
 
                     {/* Active filter chips */}
                     {activeFilterCount > 0 && (
-                        <div className="flex flex-wrap gap-2 items-center">
-                            <span className="text-xs text-[var(--muted)]">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
+                            <span style={{ fontSize: 11, color: "var(--muted)" }}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
                             {Object.entries(filters).flatMap(([cat, vals]) =>
-                                vals.map(val => (
-                                    <span key={`${cat}-${val}`} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-[var(--accent)] bg-[var(--surface2)] text-[var(--text)]">
+                                vals.map((val: string) => (
+                                    <span key={`${cat}-${val}`} style={{
+                                        display: "flex", alignItems: "center", gap: 4,
+                                        padding: "3px 10px", borderRadius: 20, fontSize: 11,
+                                        border: "0.5px solid var(--accent)", background: "var(--surface2)", color: "var(--text)",
+                                    }}>
                                         {val}
                                         <button
                                             onClick={() => toggleFilter(cat as keyof ActiveFilters, val)}
-                                            className="text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer text-sm leading-none"
+                                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 14, lineHeight: 1, padding: 0 }}
                                         >×</button>
                                     </span>
                                 ))
                             )}
-                            <button onClick={clearAll} className="text-xs text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer underline">
+                            <button onClick={clearAll} style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                                 Clear all
                             </button>
                         </div>
                     )}
                 </div>
 
-                {/* ── Main layout: filter sidebar + project list ── */}
-                <div className="flex gap-5 flex-1 min-h-0 overflow-hidden">
+                {/* ── MAIN: filter sidebar + cards ── */}
+                <div style={{ display: "flex", gap: 20, flex: 1, minHeight: 0, overflow: "hidden" }}>
 
                     {/* Desktop filter sidebar */}
-                    <aside className="hidden md:block w-52 flex-shrink-0 overflow-y-auto border-r border-[var(--border)] pr-4">
-                        <div className="flex items-center justify-between mb-3 sticky top-0 bg-[var(--bg)] py-1">
-                            <span className="text-[11px] text-[var(--muted)] uppercase tracking-wider">Filters</span>
+                    <aside
+                        className="hidden-mobile"
+                        style={{ width: 200, flexShrink: 0, overflowY: "auto", borderRight: "0.5px solid var(--border)", paddingRight: 16 }}
+                    >
+                        <div style={{ position: "sticky", top: 0, background: "var(--bg)", paddingBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                            <span style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Filters</span>
                             {activeFilterCount > 0 && (
-                                <button onClick={clearAll} className="text-[10px] text-[var(--muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer">
+                                <button onClick={clearAll} style={{ fontSize: 10, color: "var(--muted)", background: "none", border: "none", cursor: "pointer" }}>
                                     Clear all
                                 </button>
                             )}
                         </div>
-                        <FilterPanel
-                            filters={filters}
-                            toggleFilter={toggleFilter}
-                            expandedSections={expandedSections}
-                            toggleSection={toggleSection}
-                        />
+                        <FilterPanel filters={filters} toggleFilter={toggleFilter} expandedSections={expandedSections} toggleSection={toggleSection} />
                     </aside>
 
-                    {/* ── Project cards list ── */}
-                    <div className="flex-1 overflow-y-auto min-w-0">
+                    {/* Project list */}
+                    <div style={{ flex: 1, overflowY: "auto", minWidth: 0 }}>
                         {filtered.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16 border border-[var(--border)] rounded-xl bg-[var(--surface)] text-center">
-                                <div className="w-7 h-0.5 bg-[var(--border)] mb-4 mx-auto" />
-                                <p className="text-sm font-medium text-[var(--text)] mb-2">No projects found</p>
-                                <p className="text-xs text-[var(--muted)] mb-4">Try adjusting your filters or search term</p>
-                                <button onClick={clearAll} className="px-4 py-2 rounded-lg text-sm border border-[var(--border)] bg-transparent text-[var(--muted)] cursor-pointer hover:text-[var(--text)]">
-                                    Clear filters
-                                </button>
+                            <div style={{
+                                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                                padding: "48px 24px", border: "0.5px solid var(--border)", borderRadius: 10,
+                                background: "var(--surface)", textAlign: "center",
+                            }}>
+                                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", marginBottom: 6 }}>No projects found</p>
+                                <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>Try adjusting your filters or search term</p>
+                                <button onClick={clearAll} className="btn-ghost" style={{ fontSize: 12 }}>Clear filters</button>
                             </div>
                         ) : (
-                            /* FIX: use flex-col with gap so cards don't touch each other */
-                            <div className="flex flex-col gap-3 pb-4">
-                                {filtered.map(p => {
-                                    const isOwner = p.createdBy === currentUserId;
-                                    return (
-                                        <ProjectCard
-                                            key={p.id}
-                                            project={p}
-                                            isOwner={isOwner}
-                                        />
-                                    );
-                                })}
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 24 }}>
+                                {filtered.map(p => (
+                                    <ProjectCard
+                                        key={p.id}
+                                        project={p}
+                                        isOwner={p.createdBy === currentUserId}
+                                        isMember={memberProjectIds.includes(p.id)}
+                                        hasPending={pendingProjectIds.includes(p.id)}
+                                    />
+                                ))}
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* ── Mobile filter drawer ── */}
+                {/* ── MOBILE FILTER DRAWER ── */}
                 {drawerOpen && (
                     <>
-                        <div onClick={() => setDrawerOpen(false)} className="fixed inset-0 bg-black/50 z-40" />
-                        <div className="fixed inset-y-0 left-0 w-72 bg-[var(--bg)] border-r border-[var(--border)] z-50 flex flex-col" style={{ animation: "slideDown 0.2s ease" }}>
-                            <div className="flex items-center justify-between p-4 border-b border-[var(--border)] flex-shrink-0">
-                                <p className="text-sm font-medium text-[var(--text)]">Filters</p>
-                                <button onClick={() => setDrawerOpen(false)} className="text-[var(--muted)] bg-none border-none cursor-pointer text-xl">×</button>
+                        <div onClick={() => setDrawerOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 40 }} />
+                        <div style={{
+                            position: "fixed", inset: "0 auto 0 0", width: 280,
+                            background: "var(--bg)", borderRight: "0.5px solid var(--border)",
+                            zIndex: 50, display: "flex", flexDirection: "column",
+                            animation: "slideDown 0.2s ease",
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "0.5px solid var(--border)", flexShrink: 0 }}>
+                                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", margin: 0 }}>Filters</p>
+                                <button onClick={() => setDrawerOpen(false)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 20 }}>×</button>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-4">
-                                <FilterPanel
-                                    filters={filters}
-                                    toggleFilter={toggleFilter}
-                                    expandedSections={expandedSections}
-                                    toggleSection={toggleSection}
-                                />
+                            <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
+                                <FilterPanel filters={filters} toggleFilter={toggleFilter} expandedSections={expandedSections} toggleSection={toggleSection} />
                             </div>
-                            <div className="p-4 border-t border-[var(--border)] flex gap-2">
-                                <button onClick={clearAll} className="flex-1 py-2 rounded-lg text-sm border border-[var(--border)] bg-transparent text-[var(--muted)] cursor-pointer">
-                                    Clear all
-                                </button>
-                                <button onClick={() => setDrawerOpen(false)} className="flex-1 py-2 rounded-lg text-sm bg-[var(--accent)] text-[var(--bg)] border-none cursor-pointer">
-                                    Show {filtered.length} results
+                            <div style={{ padding: "12px 16px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 8 }}>
+                                <button onClick={clearAll} className="btn-ghost" style={{ flex: 1, fontSize: 12 }}>Clear all</button>
+                                <button onClick={() => setDrawerOpen(false)} className="btn-action" style={{ flex: 1, fontSize: 12 }}>
+                                    Show {filtered.length}
                                 </button>
                             </div>
                         </div>
@@ -324,142 +311,47 @@ export default function ProjectsClient({ initialProjects, currentUserId }: Props
     );
 }
 
-/* ── Project Card ── */
-function ProjectCard({ project: p, isOwner }: { project: Project; isOwner: boolean }) {
-    return (
-        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--muted)] transition-colors">
-            {/* Top row */}
-            <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-[var(--text)]">{p.title}</p>
-                    {/* Status badge */}
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wider ${STATUS_COLORS[p.status] ?? "text-[var(--muted)] border-[var(--border)]"}`}>
-                        {p.status.replace("_", " ")}
-                    </span>
-                    {/* Difficulty badge */}
-                    {p.difficulty && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--muted)]">
-                            {p.difficulty}
-                        </span>
-                    )}
-                </div>
-                {/* Owner / meta tags */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                    {isOwner && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--muted)]">
-                            Your project
-                        </span>
-                    )}
-                    {p.collaborationType && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--muted)]">
-                            {p.collaborationType}
-                        </span>
-                    )}
-                </div>
-            </div>
+// ─── FILTER PANEL ─────────────────────────────────────────────────────────────
 
-            {/* Description */}
-            <p className="text-xs text-[var(--muted)] leading-relaxed mb-3 line-clamp-2">{p.description}</p>
-
-            {/* Tech stack */}
-            {p.techStack.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                    {p.techStack.slice(0, 5).map(t => (
-                        <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-[var(--surface2)] border border-[var(--border)] text-[var(--muted)]">
-                            {t}
-                        </span>
-                    ))}
-                    {p.techStack.length > 5 && (
-                        <span className="text-[10px] text-[var(--muted)]">+{p.techStack.length - 5} more</span>
-                    )}
-                </div>
-            )}
-
-            {/* Bottom row */}
-            <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-[11px] text-[var(--muted)]">
-                        {p._count.applicants} applicant{p._count.applicants !== 1 ? "s" : ""}
-                    </span>
-                    <span className="text-[11px] text-[var(--muted)]">
-                        {p._count.teams} on team
-                    </span>
-                    {p.timeToComplete && (
-                        <span className="text-[11px] text-[var(--muted)]">{p.timeToComplete}</span>
-                    )}
-                    {p.domain && (
-                        <span className="text-[11px] text-[var(--muted)]">{p.domain}</span>
-                    )}
-                </div>
-                <Link
-                    href={`/projects/${p.id}`}
-                    className="px-3 py-1.5 rounded-lg text-xs border border-[var(--border)] text-[var(--muted)] no-underline hover:border-[var(--accent)] hover:text-[var(--text)] transition-colors"
-                >
-                    View →
-                </Link>
-            </div>
-        </div>
-    );
-}
-
-/* ── Filter panel ── */
 function FilterPanel({ filters, toggleFilter, expandedSections, toggleSection }: {
     filters: ActiveFilters;
-    toggleFilter: (category: keyof ActiveFilters, value: string) => void;
+    toggleFilter: (cat: keyof ActiveFilters, val: string) => void;
     expandedSections: Record<string, boolean>;
     toggleSection: (key: string) => void;
 }) {
     return (
-        <div className="flex flex-col gap-1">
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <FilterSection title="Difficulty" expanded={expandedSections.difficulty} onToggle={() => toggleSection("difficulty")}>
-                {FILTERS.difficulty.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.difficulty.includes(v)} onChange={() => toggleFilter("difficulty", v)} />
-                ))}
+                {FILTERS.difficulty.map(v => <FilterCB key={v} label={v} checked={filters.difficulty.includes(v)} onChange={() => toggleFilter("difficulty", v)} />)}
             </FilterSection>
             <FilterSection title="Tech Stack" expanded={expandedSections.techStack} onToggle={() => toggleSection("techStack")}>
                 {Object.entries(FILTERS.techStack).map(([group, techs]) => (
-                    <div key={group} className="mb-3">
-                        <p className="text-[10px] text-[var(--muted)] uppercase tracking-wider mb-1.5">{group}</p>
-                        {techs.map(v => (
-                            <FilterCheckbox key={v} label={v} checked={filters.techStack.includes(v)} onChange={() => toggleFilter("techStack", v)} />
-                        ))}
+                    <div key={group} style={{ marginBottom: 10 }}>
+                        <p style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 5 }}>{group}</p>
+                        {techs.map(v => <FilterCB key={v} label={v} checked={filters.techStack.includes(v)} onChange={() => toggleFilter("techStack", v)} />)}
                     </div>
                 ))}
             </FilterSection>
             <FilterSection title="Project Type" expanded={expandedSections.projectType} onToggle={() => toggleSection("projectType")}>
-                {FILTERS.projectType.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.projectType.includes(v)} onChange={() => toggleFilter("projectType", v)} />
-                ))}
+                {FILTERS.projectType.map(v => <FilterCB key={v} label={v} checked={filters.projectType.includes(v)} onChange={() => toggleFilter("projectType", v)} />)}
             </FilterSection>
-            <FilterSection title="Domain / Industry" expanded={expandedSections.domain} onToggle={() => toggleSection("domain")}>
-                {FILTERS.domain.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.domain.includes(v)} onChange={() => toggleFilter("domain", v)} />
-                ))}
+            <FilterSection title="Domain" expanded={expandedSections.domain} onToggle={() => toggleSection("domain")}>
+                {FILTERS.domain.map(v => <FilterCB key={v} label={v} checked={filters.domain.includes(v)} onChange={() => toggleFilter("domain", v)} />)}
             </FilterSection>
             <FilterSection title="Build Goal" expanded={expandedSections.buildGoal} onToggle={() => toggleSection("buildGoal")}>
-                {FILTERS.buildGoal.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.buildGoal.includes(v)} onChange={() => toggleFilter("buildGoal", v)} />
-                ))}
+                {FILTERS.buildGoal.map(v => <FilterCB key={v} label={v} checked={filters.buildGoal.includes(v)} onChange={() => toggleFilter("buildGoal", v)} />)}
             </FilterSection>
             <FilterSection title="Time to Complete" expanded={expandedSections.timeToComplete} onToggle={() => toggleSection("timeToComplete")}>
-                {FILTERS.timeToComplete.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.timeToComplete.includes(v)} onChange={() => toggleFilter("timeToComplete", v)} />
-                ))}
+                {FILTERS.timeToComplete.map(v => <FilterCB key={v} label={v} checked={filters.timeToComplete.includes(v)} onChange={() => toggleFilter("timeToComplete", v)} />)}
             </FilterSection>
-            <FilterSection title="Complexity Type" expanded={expandedSections.complexityType} onToggle={() => toggleSection("complexityType")}>
-                {FILTERS.complexityType.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.complexityType.includes(v)} onChange={() => toggleFilter("complexityType", v)} />
-                ))}
+            <FilterSection title="Complexity" expanded={expandedSections.complexityType} onToggle={() => toggleSection("complexityType")}>
+                {FILTERS.complexityType.map(v => <FilterCB key={v} label={v} checked={filters.complexityType.includes(v)} onChange={() => toggleFilter("complexityType", v)} />)}
             </FilterSection>
             <FilterSection title="Collaboration" expanded={expandedSections.collaborationType} onToggle={() => toggleSection("collaborationType")}>
-                {FILTERS.collaborationType.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.collaborationType.includes(v)} onChange={() => toggleFilter("collaborationType", v)} />
-                ))}
+                {FILTERS.collaborationType.map(v => <FilterCB key={v} label={v} checked={filters.collaborationType.includes(v)} onChange={() => toggleFilter("collaborationType", v)} />)}
             </FilterSection>
             <FilterSection title="Monetization" expanded={expandedSections.monetization} onToggle={() => toggleSection("monetization")}>
-                {FILTERS.monetization.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.monetization.includes(v)} onChange={() => toggleFilter("monetization", v)} />
-                ))}
+                {FILTERS.monetization.map(v => <FilterCB key={v} label={v} checked={filters.monetization.includes(v)} onChange={() => toggleFilter("monetization", v)} />)}
             </FilterSection>
         </div>
     );
@@ -469,36 +361,28 @@ function FilterSection({ title, expanded, onToggle, children }: {
     title: string; expanded: boolean; onToggle: () => void; children: React.ReactNode;
 }) {
     return (
-        <div className="border-b border-[var(--border)] py-2">
-            <button
-                onClick={onToggle}
-                className="flex items-center justify-between w-full py-1.5 bg-none border-none cursor-pointer text-left"
-            >
-                <span className="text-xs font-medium text-[var(--text)]">{title}</span>
-                <svg
-                    width="12" height="12" viewBox="0 0 24 24" fill="none"
-                    stroke="var(--muted)" strokeWidth="2"
-                    style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
-                >
+        <div style={{ borderBottom: "0.5px solid var(--border)", paddingBottom: expanded ? 8 : 0 }}>
+            <button onClick={onToggle} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", padding: "9px 0", background: "none", border: "none",
+                cursor: "pointer", textAlign: "left",
+            }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text)" }}>{title}</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2"
+                    style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s" }}>
                     <polyline points="6 9 12 15 18 9" />
                 </svg>
             </button>
-            {expanded && (
-                <div className="pb-2 flex flex-col gap-0.5">
-                    {children}
-                </div>
-            )}
+            {expanded && <div style={{ paddingBottom: 8 }}>{children}</div>}
         </div>
     );
 }
 
-function FilterCheckbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+function FilterCB({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
     return (
-        <label className="flex items-center gap-2 py-0.5 cursor-pointer group">
-            <input type="checkbox" checked={checked} onChange={onChange} className="flex-shrink-0 accent-[var(--accent)]" />
-            <span className={`text-xs transition-colors ${checked ? "text-[var(--text)]" : "text-[var(--muted)] group-hover:text-[var(--text)]"}`}>
-                {label}
-            </span>
+        <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "3px 0", cursor: "pointer" }}>
+            <input type="checkbox" checked={checked} onChange={onChange} style={{ flexShrink: 0, accentColor: "var(--accent)" }} />
+            <span style={{ fontSize: 11, color: checked ? "var(--text)" : "var(--muted)", transition: "color 0.12s" }}>{label}</span>
         </label>
     );
 }

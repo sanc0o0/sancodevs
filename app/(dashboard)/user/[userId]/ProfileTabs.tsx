@@ -17,14 +17,14 @@ interface Group {
 }
 
 interface Props {
-    skills: string[];
+    goals: string[];
     projects: Project[];
     publicGroups: Group[];
     isOwnProfile: boolean;
     userId: string;
 }
 
-export default function ProfileTabs({ skills, projects, publicGroups, isOwnProfile, userId }: Props) {
+export default function ProfileTabs({ goals, projects, publicGroups, isOwnProfile, userId }: Props) {
     const [tab, setTab] = useState<"projects" | "about" | "groups">("projects");
 
     const statusColor: Record<string, string> = {
@@ -92,11 +92,11 @@ export default function ProfileTabs({ skills, projects, publicGroups, isOwnProfi
             {/* About tab */}
             {tab === "about" && (
                 <div className="flex flex-col gap-3">
-                    {skills.length > 0 ? (
+                    {goals.length > 0 ? (
                         <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
                             <p className="text-xs font-semibold text-[var(--text)] uppercase tracking-wider mb-3">Skills</p>
                             <div className="flex flex-wrap gap-2">
-                                {skills.map(s => (
+                                {goals.map(s => (
                                     <span key={s} className="text-xs px-2.5 py-1 rounded-lg bg-[var(--surface2)] border border-[var(--border)] text-[var(--muted)]">
                                         {s}
                                     </span>

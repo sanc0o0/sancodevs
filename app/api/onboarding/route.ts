@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { calculateReadiness } from "@/lib/readiness";
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
@@ -10,29 +9,41 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { skills, goal, pathId, readinessScore, userCategory } = await req.json();
+    const { mission, domain, role, experienceLevel, availability, goals, collaborationReady } =
+        await req.json();
 
-    const existing = await prisma.userOnboarding.findUnique({
-        where: { userId: session.user.id },
-    });
-
-    if (existing) {
-        // Allow re-onboarding by updating
-        await prisma.userOnboarding.update({
-            where: { userId: session.user.id },
-            data: { skills, goal, pathId, readinessScore, userCategory },
-        });
-        return NextResponse.json({ success: true });
+    // Basic validation
+    if (!mission || !domain || !role || !experienceLevel || !availability) {
+        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    await prisma.userOnboarding.create({
-        data: {
+    // Derive a simple builderScore from experience + availability
+    const expScore: Record<string, number> = { BEGINNER: 20, INTERMEDIATE: 50, ADVANCED: 80 };
+    const availScore: Record<string, number> = { WEEKEND: 10, LIGHT: 20, MODERATE: 35, FULLTIME: 50 };
+    const builderScore = Math.min(100, (expScore[experienceLevel] ?? 20) + (availScore[availability] ?? 10));
+
+    await prisma.userOnboarding.upsert({
+        where: { userId: session.user.id },
+        update: {
+            mission,
+            domain,
+            role,
+            experienceLevel,
+            availability,
+            goals: goals ?? [],
+            collaborationReady: collaborationReady ?? true,
+            builderScore,
+        },
+        create: {
             userId: session.user.id,
-            skills,
-            goal,
-            pathId,
-            readinessScore: readinessScore ?? 0,
-            userCategory: userCategory ?? "BEGINNER",
+            mission,
+            domain,
+            role,
+            experienceLevel,
+            availability,
+            goals: goals ?? [],
+            collaborationReady: collaborationReady ?? true,
+            builderScore,
         },
     });
 

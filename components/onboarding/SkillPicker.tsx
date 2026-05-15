@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { SKILLS } from "@/lib/path";
 
 interface Props {
     onNext: (skills: string[]) => void;

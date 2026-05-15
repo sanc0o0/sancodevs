@@ -1,222 +1,272 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import Link from "next/link";
+import ProfileCard from "@/components/profile/ProfileCard";
+import ReliabilityCard from "@/components/profile/ReliabilityCard";
+import { getReliabilityTier } from "@/lib/scoring";
 import AddFriendButton from "./AddFriendButton";
-import ProfileTabs from "./ProfileTabs";
 import BlockButton from "./BlockButton";
 
+// Next.js 15+: params is a Promise — must be awaited
 export default async function UserProfilePage({
     params,
-}: { params: Promise<{ userId: string }> }) {
-    const session = await getServerSession(authOptions);
+}: {
+    params: Promise<{ userId: string }>;
+}) {
     const { userId } = await params;
 
-    // Block check — if viewer blocked by this user, show limited view
-    let isBlockedByThem = false;
-    let hasBlockedThem = false;
+    const session = await getServerSession(authOptions);
+    if (!session) redirect("/login");
 
-    if (session?.user?.id && session.user.id !== userId) {
-        const [blockedByThem, blockedThem] = await Promise.all([
-            prisma.block.findUnique({
-                where: { blockerId_blockedId: { blockerId: userId, blockedId: session.user.id } },
-            }),
-            prisma.block.findUnique({
-                where: { blockerId_blockedId: { blockerId: session.user.id, blockedId: userId } },
-            }),
-        ]);
-        isBlockedByThem = !!blockedByThem;
-        hasBlockedThem = !!blockedThem;
-    }
+    // Viewing own profile → redirect to /profile
+    if (userId === session.user.id) redirect("/profile");
+
+    // Guard against undefined/empty userId before hitting DB
+    if (!userId) redirect("/dashboard");
 
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: {
-            id: true, name: true, image: true, createdAt: true,
-            onboarding: { select: { skills: true, goal: true, userCategory: true } },
-            communityMembers: {
-                where: { status: "ACTIVE" },
-                include: { group: { select: { id: true, name: true, isPrivate: true } } },
-                take: 8,
-            },
+        include: {
+            stats: true,
+            onboarding: true,
             teams: {
-                include: { project: { select: { id: true, title: true, status: true, techStack: true } } },
+                include: {
+                    project: { select: { id: true, title: true, status: true } },
+                },
+                orderBy: { id: "desc" },
                 take: 10,
+            },
+            assignedTasks: {
+                where: { status: { in: ["TODO", "IN_PROGRESS", "SUBMITTED"] } },
+                include: { project: { select: { id: true, title: true } } },
+                orderBy: { dueDate: "asc" },
+                take: 5,
             },
         },
     });
 
-    if (!user) notFound();
+    if (!user) redirect("/dashboard");
 
-    const isOwnProfile = session?.user?.id === userId;
+    // Check if viewer has blocked this user (or vice versa)
+    const blockRecord = await prisma.block.findFirst({
+        where: {
+            OR: [
+                { blockerId: session.user.id, blockedId: userId },
+                { blockerId: userId, blockedId: session.user.id },
+            ],
+        },
+        select: { blockerId: true },
+    });
+    const viewerHasBlocked = blockRecord?.blockerId === session.user.id;
 
-    if ((isBlockedByThem || hasBlockedThem) && !isOwnProfile) {
-        return (
-            <div className="max-w-lg mx-auto px-4 py-16 text-center">
-                <div className="w-16 h-16 rounded-full bg-[var(--surface2)] border border-[var(--border)] flex items-center justify-center mx-auto mb-4">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5">
-                        <circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                    </svg>
-                </div>
-                <p className="text-sm font-medium text-[var(--text)] mb-2">Profile not available</p>
-                <p className="text-xs text-[var(--muted)]">
-                    {hasBlockedThem ? "You have blocked this user." : "This profile isn't accessible."}
-                </p>
-                {hasBlockedThem && (
-                    <p className="text-xs text-[var(--muted)] mt-1">
-                        You can unblock them in{" "}
-                        <a href="/settings" className="text-[var(--accent)] no-underline hover:underline">Settings → Privacy</a>
-                    </p>
-                )}
-                <Link href="/community" className="mt-6 inline-flex items-center gap-1.5 text-xs text-[var(--accent)] no-underline hover:opacity-70 transition-opacity">
-                    ← Back
-                </Link>
-            </div>
-        );
-    }
+    const stats = user.stats;
+    const ob = user.onboarding;
+    const score = stats?.reliabilityScore ?? 100;
+    const totalTerminal = stats
+        ? stats.tasksCompleted + stats.tasksLate + stats.tasksMissed + stats.tasksRejected
+        : 0;
 
-    // Stats
-    const [totalProjects, activeGroups, tasksCompleted, totalTasks, friendCount, userStats] = await Promise.all([
-        prisma.teamMember.count({ where: { userId } }),
-        prisma.communityMember.count({ where: { userId, status: "ACTIVE" } }),
-        prisma.projectTask.count({ where: { assignedTo: userId, status: "DONE" } }),
-        prisma.projectTask.count({ where: { assignedTo: userId } }),
-        prisma.friendship.count({ where: { OR: [{ user1Id: userId }, { user2Id: userId }] } }),
-        prisma.userStats.findUnique({ where: { userId } }),
-    ]);
+    const cardProjects = user.teams.map(t => ({
+        id: t.project.id,
+        title: t.project.title,
+        status: t.project.status,
+        role: t.role,
+    }));
 
-    const completionRate = totalTasks > 0 ? Math.round((tasksCompleted / totalTasks) * 100) : 0;
-    const reliabilityScore = userStats?.reliabilityScore ?? 100;
-    const onTimeRate = userStats?.onTimeRate ?? 100;
-    const tasksMissed = userStats?.tasksMissed ?? 0;
-    const tasksLate = userStats?.tasksLate ?? 0;
-
-    const categoryLabel: Record<string, string> = {
-        BEGINNER: "Beginner", INTERMEDIATE: "Intermediate", BUILDER: "Expert",
-    };
-    const categoryColor: Record<string, string> = {
-        BEGINNER: "bg-blue-400/10 text-blue-400 border-blue-400/30",
-        INTERMEDIATE: "bg-amber-400/10 text-amber-400 border-amber-400/30",
-        BUILDER: "bg-green-400/10 text-green-400 border-green-400/30",
+    const reliabilityData = {
+        reliabilityScore: stats?.reliabilityScore ?? 100,
+        onTimeRate: stats?.onTimeRate ?? 100,
+        tasksCompleted: stats?.tasksCompleted ?? 0,
+        tasksLate: stats?.tasksLate ?? 0,
+        tasksMissed: stats?.tasksMissed ?? 0,
+        tasksRejected: stats?.tasksRejected ?? 0,
     };
 
-    function getColor(name: string) {
-        const colors = ["bg-orange-500", "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-pink-500", "bg-teal-500"];
-        return colors[(name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % colors.length];
-    }
+    const domainLabel = ob?.domain?.replace(/_/g, " ") ?? null;
+    const roleLabel = ob?.role?.replace(/_/g, " ") ?? null;
+    const expLabel = ob?.experienceLevel
+        ? ob.experienceLevel.charAt(0) + ob.experienceLevel.slice(1).toLowerCase()
+        : null;
+    const availLabel = ob?.availability
+        ? (({ WEEKEND: "Weekends only", LIGHT: "Light — 1–2 hrs/day", MODERATE: "Moderate — 3–5 hrs/day", FULLTIME: "Full-time" }) as Record<string, string>)[ob.availability] ?? ob.availability
+        : null;
+    const missionLabel = ob?.mission
+        ? (({ JOIN_PROJECT: "Looking to join projects", START_PROJECT: "Building my own project", FIND_TEAM: "Finding a team" }) as Record<string, string>)[ob.mission] ?? ob.mission
+        : null;
 
-    const category = user.onboarding?.userCategory ?? "BEGINNER";
-    const publicGroups = user.communityMembers.filter(m => !m.group.isPrivate);
+    const STATUS_COLORS: Record<string, string> = {
+        OPEN: "#22c55e", IN_PROGRESS: "#378ADD", CLOSED: "#666",
+        COMPLETED: "#639922", TERMINATED: "#e24b4a",
+    };
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-6">
-            {/* Back */}
-            <Link href="/community" className="inline-flex items-center gap-1.5 text-xs text-[var(--muted)] hover:text-[var(--text)] mb-5 no-underline transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="15 18 9 12 15 6" />
-                </svg>
-                Back
-            </Link>
+        <>
+            <style>{`
+                .user-prof-wrap  { width: 100%; margin: 0 auto; padding: 20px 16px 60px; }
+                .user-prof-grid  { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+                .user-prof-left  { display: flex; flex-direction: column; gap: 12px; }
+                .user-prof-right { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+                @media (max-width: 880px) {
+                    .user-prof-grid { grid-template-columns: 1fr; }
+                }
+            `}</style>
 
-            {/* Hero */}
-            <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] mb-4">
-                <div className="flex items-start gap-4">
-                    <div className={`w-16 h-16 rounded-full flex-shrink-0 flex items-center justify-center text-2xl font-bold text-white overflow-hidden ${getColor(user.name ?? "?")}`}>
-                        {user.image
-                            ? <img src={user.image} alt="" className="w-full h-full object-cover" />
-                            : user.name?.charAt(0).toUpperCase()
-                        }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h1 className="text-base font-semibold text-[var(--text)]">{user.name}</h1>
-                            {user.onboarding?.userCategory && (
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${categoryColor[category]}`}>
-                                    {categoryLabel[category]}
-                                </span>
-                            )}
+            <div className="user-prof-wrap">
+
+                <div className="user-prof-grid">
+
+                    {/* ══ LEFT COLUMN ══ */}
+                    <div className="user-prof-left">
+
+                        {/* ProfileCard — visitor perspective, no edit options */}
+                        <ProfileCard
+                            name={user.name ?? "Builder"}
+                            email={user.email}
+                            image={user.image}
+                            role={roleLabel}
+                            domain={domainLabel}
+                            experienceLevel={ob?.experienceLevel ?? null}
+                            availability={availLabel}
+                            mission={missionLabel}
+                            location={null}
+                            timezone={null}
+                            projects={cardProjects}
+                            reliabilityScore={score}
+                            builderScore={ob?.builderScore}
+                            isOwner={false}
+                        />
+
+                        {/* Social action buttons */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <AddFriendButton targetUserId={userId} />
+                            <BlockButton targetUserId={userId} isBlocked={viewerHasBlocked} />
                         </div>
-                        <p className="text-xs text-[var(--muted)]">
-                            Joined {new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                        </p>
-                        {user.onboarding?.goal && (
-                            <p className="text-xs text-[var(--muted)] mt-0.5 truncate">Goal: {user.onboarding.goal}</p>
+
+                        {/* Builder identity */}
+                        {ob && (
+                            <Section label="Builder identity">
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                    {[
+                                        { text: domainLabel, strong: true },
+                                        { text: roleLabel, strong: true },
+                                        { text: expLabel, strong: false },
+                                        { text: availLabel, strong: false },
+                                        ...(ob.goals ?? []).map(g => ({ text: g.replace(/_/g, " "), strong: false })),
+                                    ].filter(x => x.text).map((x, i) => (
+                                        <span key={i} style={{
+                                            fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                                            border: "0.5px solid var(--border)",
+                                            color: x.strong ? "var(--text)" : "var(--muted)",
+                                            background: x.strong ? "var(--surface2)" : "transparent",
+                                            textTransform: "capitalize",
+                                        }}>
+                                            {x.text}
+                                        </span>
+                                    ))}
+                                </div>
+                            </Section>
                         )}
-                    </div>
-                    {/* Action buttons */}
-                    {!isOwnProfile && session && (
-                        <div className="flex flex-col gap-2 flex-shrink-0">
-                            {!hasBlockedThem && <AddFriendButton targetUserId={userId} />}
-                            <BlockButton targetUserId={userId} isBlocked={hasBlockedThem} />
-                        </div>
-                    )}
-                    {isOwnProfile && (
-                        <Link href="/settings" className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--muted)] no-underline hover:text-[var(--text)] hover:border-[var(--accent)] transition-colors">
-                            Edit profile
-                        </Link>
-                    )}
-                </div>
 
-                {/* Stats row */}
-                <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-[var(--border)]">
-                    {[
-                        { label: "Projects", value: totalProjects },
-                        { label: "Groups", value: activeGroups },
-                        { label: "Friends", value: friendCount },
-                        { label: "Reliability", value: `${reliabilityScore}%` },
-                    ].map(s => (
-                        <div key={s.label} className="text-center">
-                            <p className="text-lg font-semibold text-[var(--text)]">{s.value}</p>
-                            <p className="text-[10px] text-[var(--muted)]">{s.label}</p>
-                        </div>
-                    ))}
-                </div>
+                        {/* Achievements */}
+                        <Section label="Achievements">
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {totalTerminal >= 1 && <Badge label="First task" />}
+                                {(stats?.tasksCompleted ?? 0) >= 10 && <Badge label="10 tasks done" />}
+                                {(stats?.tasksCompleted ?? 0) >= 30 && <Badge label="30 tasks done" />}
+                                {(stats?.tasksMissed ?? 0) === 0 && totalTerminal >= 5 && <Badge label="Zero missed" />}
+                                {score >= 90 && totalTerminal >= 5 && <Badge label="Top performer" />}
+                                {user.teams.length >= 3 && <Badge label="Multi-project" />}
+                                {totalTerminal === 0 && (
+                                    <p style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", margin: 0 }}>
+                                        No achievements yet.
+                                    </p>
+                                )}
+                            </div>
+                        </Section>
 
-                {/* Task completion bar */}
-                {totalTasks > 0 && (
-                    <div className="mt-3">
-                        <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] text-[var(--muted)]">Task completion</span>
-                            <span className="text-[10px] font-medium text-[var(--text)]">{tasksCompleted}/{totalTasks}</span>
-                        </div>
-                        <div className="h-1 bg-[var(--border)] rounded-full overflow-hidden">
-                            <div
-                                className="h-full rounded-full transition-all"
-                                style={{
-                                    width: `${completionRate}%`,
-                                    background: completionRate >= 70 ? "#22c55e" : completionRate >= 40 ? "#f59e0b" : "#ef4444",
-                                }}
-                            />
-                        </div>
                     </div>
-                )}
+
+                    {/* ══ RIGHT COLUMN ══ */}
+                    <div className="user-prof-right">
+
+                        <ReliabilityCard data={reliabilityData} />
+
+                        {/* Project history */}
+                        {user.teams.length > 0 && (
+                            <Section label={`Project history (${user.teams.length})`}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    {user.teams.map(t => (
+                                        <Link key={t.id} href={`/projects/${t.project.id}`} style={{ textDecoration: "none" }}>
+                                            <div className="card-hover" style={{
+                                                display: "flex", alignItems: "center",
+                                                justifyContent: "space-between", gap: 10,
+                                                padding: "10px 14px", borderRadius: 8,
+                                                border: "0.5px solid var(--border)", background: "var(--surface2)",
+                                            }}>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <p style={{ fontSize: 12, fontWeight: 500, color: "var(--text)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                        {t.project.title}
+                                                    </p>
+                                                    <p style={{ fontSize: 10, color: "var(--muted)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                                        {t.role}
+                                                    </p>
+                                                </div>
+                                                <span style={{ fontSize: 9, fontWeight: 600, flexShrink: 0, textTransform: "uppercase", color: STATUS_COLORS[t.project.status] ?? "#666" }}>
+                                                    {t.project.status.replace("_", " ")}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </Section>
+                        )}
+
+                        {/* Team reputation */}
+                        <Section label="Team reputation">
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                                {["Communication", "Execution", "Ownership"].map(r => (
+                                    <div key={r} style={{ padding: "10px 8px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--surface2)", textAlign: "center" }}>
+                                        <p style={{ fontSize: 15, fontWeight: 700, color: "var(--muted)", margin: 0 }}>—</p>
+                                        <p style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 3 }}>{r}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </Section>
+
+                        {user.teams.length === 0 && (
+                            <div style={{ padding: "32px 20px", borderRadius: 10, border: "0.5px dashed var(--border)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                                <p style={{ fontSize: 13, color: "var(--muted)" }}>No project activity yet.</p>
+                            </div>
+                        )}
+
+                    </div>
+                </div>
             </div>
+        </>
+    );
+}
 
-            {/* Reliability breakdown */}
-            {totalTasks > 0 && (
-                <div className="flex gap-3 mt-3 pt-3 border-t border-[var(--border)]">
-                    {[
-                        { label: "On time", value: `${onTimeRate}%`, color: "text-green-500" },
-                        { label: "Late", value: tasksLate, color: "text-orange-400" },
-                        { label: "Missed", value: tasksMissed, color: "text-red-400" },
-                    ].map(s => (
-                        <div key={s.label} className="text-center flex-1">
-                            <p className={`text-sm font-semibold ${s.color}`}>{s.value}</p>
-                            <p className="text-[9px] text-[var(--muted)]">{s.label}</p>
-                        </div>
-                    ))}
-                </div>
-            )}
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
-            {/* Tabbed content */}
-            <ProfileTabs
-                skills={user.onboarding?.skills ?? []}
-                projects={user.teams.map(t => t.project)}
-                publicGroups={publicGroups.map(m => m.group)}
-                isOwnProfile={isOwnProfile}
-                userId={userId}
-            />
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div style={{ border: "0.5px solid var(--border)", borderRadius: 10, background: "var(--surface)", overflow: "hidden" }}>
+            <div style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--border)" }}>
+                <p style={{ fontSize: 10, fontWeight: 500, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>
+                    {label}
+                </p>
+            </div>
+            <div style={{ padding: "14px 16px" }}>{children}</div>
         </div>
+    );
+}
+
+function Badge({ label }: { label: string }) {
+    return (
+        <span style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid var(--border)", color: "var(--text)", background: "var(--surface2)" }}>
+            {label}
+        </span>
     );
 }
