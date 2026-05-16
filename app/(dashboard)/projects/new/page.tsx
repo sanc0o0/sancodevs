@@ -53,13 +53,13 @@ export default function NewProjectPage() {
     const [state, setState] = useState<"idle" | "loading" | "error">("idle");
     const [error, setError] = useState("");
     const [title, setTitle] = useState("");
-    const [projectUrl, setProjectUrl] = useState("");
+    const [liveUrl, setliveUrl] = useState("");
     const [repoUrl, setRepoUrl] = useState("");
     const [description, setDescription] = useState("");
     const [difficulty, setDifficulty] = useState(DIFFICULTY[0]);
     const [maxMembers, setMaxMembers] = useState("3");
     const [techStack, setTechStack] = useState<string[]>([]);
-    const [lookingFor, setLookingFor] = useState("");
+    const [openRoles, setopenRoles] = useState("");
     const [type, setType] = useState<"solo" | "team">("team");
     const [techSearch, setTechSearch] = useState("");
     const [createCommunity, setCreateCommunity] = useState(true);
@@ -86,8 +86,8 @@ export default function NewProjectPage() {
                 body: JSON.stringify({
                     title, description, difficulty,
                     maxMembers: parseInt(maxMembers),
-                    techStack, lookingFor, type,
-                    projectUrl, repoUrl,
+                    techStack, openRoles, type,
+                    liveUrl, repoUrl,
                     createCommunity,
                     communityName: communityName || title,
                 }),
@@ -199,9 +199,9 @@ export default function NewProjectPage() {
                 {type === "team" && (
                     <div style={{ padding: "1.25rem 1.5rem", borderRadius: "10px", border: "0.5px solid var(--border)", background: "var(--surface)" }}>
                         <p style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>Looking for</p>
-                        <textarea value={lookingFor} rows={3}
+                        <textarea value={openRoles} rows={3}
                             placeholder="What kind of contributor are you looking for? Skills, commitment level, time zone, etc."
-                            onChange={e => setLookingFor(e.target.value)}
+                            onChange={e => setopenRoles(e.target.value)}
                             style={{ ...inputStyle, resize: "vertical" }}
                             onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                             onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
@@ -215,9 +215,9 @@ export default function NewProjectPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                         <div>
                             <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "5px" }}>Project URL (must be live)</label>
-                            <input type="url" value={projectUrl}
+                            <input type="url" value={liveUrl}
                                 placeholder="https://myproject.vercel.app"
-                                onChange={e => setProjectUrl(e.target.value)}
+                                onChange={e => setliveUrl(e.target.value)}
                                 style={inputStyle}
                                 onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                                 onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}

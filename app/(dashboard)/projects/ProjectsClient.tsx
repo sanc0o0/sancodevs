@@ -30,7 +30,7 @@ const FILTERS = {
     projectType: ["Web App", "Full Stack App", "API Service", "CLI Tool", "Mobile App", "Chrome Extension", "Desktop App", "Microservice"],
     domain: ["Education", "Fintech", "Health", "Social Media", "E-commerce", "Productivity", "Developer Tools", "AI Tools", "Gaming", "Content / Blogging"],
     buildGoal: ["Learn Basics", "Practice Concepts", "Resume Project", "Portfolio Project", "Real-world System", "Startup Idea", "Open Source Ready"],
-    timeToComplete: ["< 1 hour", "1–3 hours", "1 day", "2–3 days", "1 week", "2+ weeks"],
+    estimatedDuration: ["< 1 hour", "1–3 hours", "1 day", "2–3 days", "1 week", "2+ weeks"],
     complexityType: ["CRUD App", "Authentication System", "Real-time System", "API Integration", "Payment Integration", "AI-powered", "File Handling", "Background Jobs"],
     collaborationType: ["Solo Project", "Team Project"],
     monetization: ["No Monetization", "Freelance Ready", "SaaS Potential", "Startup Scalable"],
@@ -38,13 +38,13 @@ const FILTERS = {
 
 type ActiveFilters = {
     difficulty: string[]; techStack: string[]; projectType: string[];
-    domain: string[]; buildGoal: string[]; timeToComplete: string[];
+    domain: string[]; buildGoal: string[]; estimatedDuration: string[];
     complexityType: string[]; collaborationType: string[]; monetization: string[];
 };
 
 const emptyFilters = (): ActiveFilters => ({
     difficulty: [], techStack: [], projectType: [], domain: [],
-    buildGoal: [], timeToComplete: [], complexityType: [],
+    buildGoal: [], estimatedDuration: [], complexityType: [],
     collaborationType: [], monetization: [],
 });
 
@@ -73,8 +73,8 @@ export default function ProjectsClient({
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         difficulty: true, techStack: true, projectType: false,
-        domain: false, buildGoal: false, timeToComplete: false,
-        complexityType: false, collaborationType: false, monetization: false,
+        domain: false, buildGoal: false, estimatedDuration: false,
+         collaborationType: false, monetization: false,
     });
 
     function toggleFilter(category: keyof ActiveFilters, value: string) {
@@ -110,8 +110,7 @@ export default function ProjectsClient({
         if (filters.projectType.length) result = result.filter(p => p.projectType && filters.projectType.includes(p.projectType));
         if (filters.domain.length) result = result.filter(p => p.domain && filters.domain.includes(p.domain));
         if (filters.buildGoal.length) result = result.filter(p => p.buildGoal && filters.buildGoal.includes(p.buildGoal));
-        if (filters.timeToComplete.length) result = result.filter(p => p.timeToComplete && filters.timeToComplete.includes(p.timeToComplete));
-        if (filters.complexityType.length) result = result.filter(p => p.complexityType.some(c => filters.complexityType.includes(c)));
+        if (filters.estimatedDuration.length) result = result.filter(p => p.estimatedDuration && filters.estimatedDuration.includes(p.estimatedDuration));
         if (filters.collaborationType.length) result = result.filter(p => filters.collaborationType.includes(p.collaborationType));
         if (filters.monetization.length) result = result.filter(p => p.monetization && filters.monetization.includes(p.monetization));
 
@@ -341,11 +340,8 @@ function FilterPanel({ filters, toggleFilter, expandedSections, toggleSection }:
             <FilterSection title="Build Goal" expanded={expandedSections.buildGoal} onToggle={() => toggleSection("buildGoal")}>
                 {FILTERS.buildGoal.map(v => <FilterCB key={v} label={v} checked={filters.buildGoal.includes(v)} onChange={() => toggleFilter("buildGoal", v)} />)}
             </FilterSection>
-            <FilterSection title="Time to Complete" expanded={expandedSections.timeToComplete} onToggle={() => toggleSection("timeToComplete")}>
-                {FILTERS.timeToComplete.map(v => <FilterCB key={v} label={v} checked={filters.timeToComplete.includes(v)} onChange={() => toggleFilter("timeToComplete", v)} />)}
-            </FilterSection>
-            <FilterSection title="Complexity" expanded={expandedSections.complexityType} onToggle={() => toggleSection("complexityType")}>
-                {FILTERS.complexityType.map(v => <FilterCB key={v} label={v} checked={filters.complexityType.includes(v)} onChange={() => toggleFilter("complexityType", v)} />)}
+            <FilterSection title="Time to Complete" expanded={expandedSections.estimatedDuration} onToggle={() => toggleSection("estimatedDuration")}>
+                {FILTERS.estimatedDuration.map(v => <FilterCB key={v} label={v} checked={filters.estimatedDuration.includes(v)} onChange={() => toggleFilter("estimatedDuration", v)} />)}
             </FilterSection>
             <FilterSection title="Collaboration" expanded={expandedSections.collaborationType} onToggle={() => toggleSection("collaborationType")}>
                 {FILTERS.collaborationType.map(v => <FilterCB key={v} label={v} checked={filters.collaborationType.includes(v)} onChange={() => toggleFilter("collaborationType", v)} />)}

@@ -10,7 +10,7 @@ export type ActiveFilters = {
     projectType: string[];
     domain: string[];
     buildGoal: string[];
-    timeToComplete: string[];
+    estimatedDuration: string[];
     complexityType: string[];
     collaborationType: string[];
     monetization: string[];
@@ -18,7 +18,7 @@ export type ActiveFilters = {
 
 export const emptyFilters = (): ActiveFilters => ({
     difficulty: [], techStack: [], projectType: [], domain: [],
-    buildGoal: [], timeToComplete: [], complexityType: [],
+    buildGoal: [], estimatedDuration: [], complexityType: [],
     collaborationType: [], monetization: [],
 });
 
@@ -37,7 +37,7 @@ export const FILTERS = {
     projectType: ["Web App", "Full Stack App", "API Service", "CLI Tool", "Mobile App", "Chrome Extension", "Desktop App", "Microservice"],
     domain: ["Education", "Fintech", "Health", "Social Media", "E-commerce", "Productivity", "Developer Tools", "AI Tools", "Gaming", "Content / Blogging"],
     buildGoal: ["Learn Basics", "Practice Concepts", "Resume Project", "Portfolio Project", "Real-world System", "Startup Idea", "Open Source Ready"],
-    timeToComplete: ["< 1 hour", "1–3 hours", "1 day", "2–3 days", "1 week", "2+ weeks"],
+    estimatedDuration: ["< 1 hour", "1–3 hours", "1 day", "2–3 days", "1 week", "2+ weeks"],
     complexityType: ["CRUD App", "Authentication System", "Real-time System", "API Integration", "Payment Integration", "AI-powered", "File Handling", "Background Jobs"],
     collaborationType: ["Solo Project", "Team Project"],
     monetization: ["No Monetization", "Freelance Ready", "SaaS Potential", "Startup Scalable"],
@@ -99,9 +99,9 @@ export function FilterPanel({ filters, toggleFilter, expandedSections, toggleSec
                 ))}
             </FilterSection>
 
-            <FilterSection title="Time to Complete" expanded={expandedSections.timeToComplete} onToggle={() => toggleSection("timeToComplete")}>
-                {FILTERS.timeToComplete.map(v => (
-                    <FilterCheckbox key={v} label={v} checked={filters.timeToComplete.includes(v)} onChange={() => toggleFilter("timeToComplete", v)} />
+            <FilterSection title="Time to Complete" expanded={expandedSections.estimatedDuration} onToggle={() => toggleSection("estimatedDuration")}>
+                {FILTERS.estimatedDuration.map(v => (
+                    <FilterCheckbox key={v} label={v} checked={filters.estimatedDuration.includes(v)} onChange={() => toggleFilter("estimatedDuration", v)} />
                 ))}
             </FilterSection>
 

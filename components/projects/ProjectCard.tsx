@@ -16,11 +16,10 @@ export interface ProjectCardProject {
     projectType: string | null;
     domain: string | null;
     buildGoal: string | null;
-    timeToComplete: string | null;
-    complexityType: string[];
+    estimatedDuration: string | null;
     collaborationType: string;
     monetization: string | null;
-    lookingFor: string | null;
+    openRoles: string [];
     maxMembers: number | null;
     createdAt: string;
     updatedAt?: string;
@@ -108,9 +107,9 @@ function getCtaConfig(p: ProjectCardProject, isOwner: boolean) {
     return { label: "View project", href: `/projects/${p.id}`, style: "ghost" as const };
 }
 
-function parseRoles(lookingFor: string | null): string[] {
-    if (!lookingFor) return [];
-    return lookingFor
+function parseRoles(openRoles: string | null): string[] {
+    if (!openRoles) return [];
+    return openRoles
         .split(/[,\n•·\-|\/]/)
         .map(s => s.trim())
         .filter(s => s.length > 0 && s.length < 40)
@@ -234,7 +233,7 @@ function AccentStrip({ color }: { color: string }) {
 export default function ProjectCard({ project: p, isOwner, isMember = false, hasPending = false }: ProjectCardProps) {
     const health = useMemo(() => getHealthLabel(p), [p]);
     const cta = useMemo(() => getCtaConfig(p, isOwner), [p, isOwner]);
-    const roles = useMemo(() => parseRoles(p.lookingFor), [p.lookingFor]);
+    const roles = useMemo(() => p.openRoles, [p.openRoles]);
     const statusCfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.OPEN;
     const categoryCfg = p.projectCategory ? CATEGORY_CONFIG[p.projectCategory] : null;
 
@@ -246,10 +245,11 @@ export default function ProjectCard({ project: p, isOwner, isMember = false, has
     const techExtra = p.techStack.length - techVisible.length;
 
     // Derive accent color: explicit > domain > category > default
-    const accent = p.accentColor
-        ?? (p.domain ? DOMAIN_ACCENT[p.domain] : null)
-        ?? (categoryCfg?.color ?? null)
-        ?? "var(--accent)";
+    const accent =
+        p.accentColor ||
+        (p.domain ? DOMAIN_ACCENT[p.domain] : undefined) ||
+        categoryCfg?.color ||
+        "var(--accent)";
 
     // Mission snippet
     const firstSentence = p.description.match(/^[^.!?\n]+[.!?]?/)?.[0]?.trim() ?? p.description;
@@ -493,8 +493,8 @@ export default function ProjectCard({ project: p, isOwner, isMember = false, has
                         {p._count.applicants} applied
                     </span>
 
-                    {p.timeToComplete && (
-                        <span style={{ fontSize: 11, color: "var(--muted)" }}>{p.timeToComplete}</span>
+                    {p.estimatedDuration && (
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>{p.estimatedDuration}</span>
                     )}
                 </div>
 

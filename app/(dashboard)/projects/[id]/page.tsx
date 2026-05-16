@@ -181,7 +181,7 @@ export default async function ProjectDetailPage({
                                 { label: "Status", value: project.status },
                                 { label: "Difficulty", value: project.difficulty ?? "—" },
                                 { label: "Type", value: project.projectType ?? "—" },
-                                { label: "Time", value: project.timeToComplete ?? "—" },
+                                { label: "Time", value: project.estimatedDuration ?? "—" },
                                 { label: "Applicants", value: String(project.applicants.length) },
                                 { label: "Team size", value: String(project.teams.length) },
                             ].map(d => (
@@ -192,10 +192,10 @@ export default async function ProjectDetailPage({
                             ))}
 
                             {/* External links */}
-                            {(project.projectUrl || project.repoUrl) && (
+                            {(project.liveUrl || project.repoUrl) && (
                                 <div className="border-t border-[var(--border)] pt-2.5 mt-1 flex flex-col gap-1.5">
-                                    {project.projectUrl && (
-                                        <a href={project.projectUrl} target="_blank" rel="noopener noreferrer"
+                                    {project.liveUrl && (
+                                        <a href={project.liveUrl} target="_blank" rel="noopener noreferrer"
                                             className="text-xs text-[var(--accent)] no-underline hover:underline truncate">
                                             ↗ Live project
                                         </a>

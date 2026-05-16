@@ -571,7 +571,7 @@ function EditableTags({ label, tags, allOptions, onSave }: {
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
 const POSITION_TYPES = ["Remote", "On-site", "Hybrid", "Full-time", "Part-time", "Contract"];
-const SKILLS_OPTIONS = ["React", "Next.js", "TypeScript", "Node.js", "Python", "PostgreSQL", "MongoDB", "Prisma", "Tailwind CSS", "Docker", "GraphQL", "Figma", "Blender", "Three.js", "Go", "Rust", "Swift", "Kotlin", "Flutter", "AWS"];
+export const SKILLS_OPTIONS = ["React", "Next.js", "TypeScript", "Node.js", "Python", "PostgreSQL", "MongoDB", "Prisma", "Tailwind CSS", "Docker", "GraphQL", "Figma", "Blender", "Three.js", "Go", "Rust", "Swift", "Kotlin", "Flutter", "AWS"];
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 

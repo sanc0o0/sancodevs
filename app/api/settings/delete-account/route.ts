@@ -48,7 +48,6 @@ export async function DELETE() {
         await prisma.notification.deleteMany({ where: { userId } }).catch(() => { });
         await prisma.userPreferences.deleteMany({ where: { userId } }).catch(() => { });
         await prisma.userActivity.deleteMany({ where: { userId } }).catch(() => { });
-        await prisma.userProgress.deleteMany({ where: { userId } }).catch(() => { });
         await prisma.userOnboarding.deleteMany({ where: { userId } }).catch(() => { });
         await prisma.jobApplication.deleteMany({ where: { email: session.user.email! } }).catch(() => { });
         await prisma.session.deleteMany({ where: { userId } }).catch(() => { });

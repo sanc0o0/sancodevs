@@ -20,8 +20,8 @@ export async function POST(req: Request) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const {
-        title, description, difficulty, maxMembers, techStack, lookingFor,
-        projectUrl, repoUrl, createCommunity, communityName,
+        title, description, difficulty, maxMembers, techStack, openRoles,
+        liveUrl, repoUrl, createCommunity, communityName,
     } = await req.json();
 
     if (!title || !description || !difficulty) {
@@ -34,9 +34,9 @@ export async function POST(req: Request) {
     }
 
     // Check if project URL is reachable
-    if (projectUrl) {
+    if (liveUrl) {
         try {
-            const res = await fetch(projectUrl, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+            const res = await fetch(liveUrl, { method: "HEAD", signal: AbortSignal.timeout(5000) });
             if (!res.ok) {
                 return NextResponse.json({ error: "Project URL is not reachable. Make sure it's live." }, { status: 400 });
             }
@@ -57,9 +57,9 @@ export async function POST(req: Request) {
             status: "OPEN",
             difficulty,
             techStack: normalizedTechStack,
-            lookingFor,
+            openRoles,
             maxMembers,
-            projectUrl,
+            liveUrl,
             repoUrl,
         },
     });

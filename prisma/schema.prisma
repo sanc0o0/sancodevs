@@ -567,10 +567,11 @@ model ProjectTask {
 
   /// Submission URL
   submissionUrl String?
+  submittedAt   DateTime?
 
   /// Review feedback
   reviewNote String?
-
+  reviewedBy String?
   reviewedAt DateTime?
 
   /// Relations

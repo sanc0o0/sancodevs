@@ -18,6 +18,7 @@ export default async function ProjectsPage() {
             initialProjects={projects.map(p => ({
                 ...p,
                 createdAt: p.createdAt.toISOString(),
+                updatedAt: p.updatedAt.toISOString(),
             }))}
             currentUserId={session.user.id}
         />
