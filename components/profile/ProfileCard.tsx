@@ -25,6 +25,8 @@ export interface ProfileCardProps {
     experienceLevel: string | null;
     availability: string | null;
     mission: string | null;
+    location?: string | null;
+    timezone?: string | null;
     prefTechs: string[];
     prefTopics: string[];
     projects: Project[];

@@ -123,8 +123,11 @@ export default async function UserProfilePage({
                         {/* ProfileCard — visitor perspective, no edit options */}
                         <ProfileCard
                             name={user.name ?? "Builder"}
+                            username={user.username}
                             email={user.email}
                             image={user.image}
+                            bannerImage={user.bannerImage ?? null}
+                            bio={user.bio ?? null}
                             role={roleLabel}
                             domain={domainLabel}
                             experienceLevel={ob?.experienceLevel ?? null}
@@ -132,9 +135,11 @@ export default async function UserProfilePage({
                             mission={missionLabel}
                             location={null}
                             timezone={null}
+                            prefTechs={[]}
+                            prefTopics={[]}
                             projects={cardProjects}
                             reliabilityScore={score}
-                            builderScore={ob?.builderScore}
+                            builderScore={ob?.builderScore ?? 0}
                             isOwner={false}
                         />
 
