@@ -21,7 +21,6 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
     const navLinks = session
         ? [
             { label: "Dashboard", href: "/dashboard" },
-            { label: "Learn", href: "/learn" },
             { label: "Projects", href: "/projects" },
             { label: "Community", href: "/community" },
             { label: "Profile", href: "/profile" },
@@ -98,7 +97,6 @@ export default function Navbar({ minimal = false, hideAuth = false }: NavbarProp
                                         </div>
                                         {[
                                             { label: "Dashboard", href: "/dashboard" },
-                                            { label: "Learn", href: "/learn" },
                                             { label: "Projects", href: "/projects" },
                                             { label: "Community", href: "/community" },
                                             { label: "Profile", href: "/profile" },

@@ -15,15 +15,15 @@ export default async function ProfilePage() {
         include: {
             stats: true,
             onboarding: true,
+            preferences: true,
             teams: {
-                include: {
-                    project: { select: { id: true, title: true, status: true } },
-                },
-                orderBy: { id: "desc" },
+                where: { active: true },
+                include: { project: { select: { id: true, title: true, status: true } } },
+                orderBy: { joinedAt: "desc" },
                 take: 10,
             },
             assignedTasks: {
-                where: { status: { in: ["TODO", "IN_PROGRESS", "SUBMITTED"] } },
+                where: { status: { in: ["TODO", "IN_PROGRESS"] } },
                 include: { project: { select: { id: true, title: true } } },
                 orderBy: { dueDate: "asc" },
                 take: 5,
@@ -35,10 +35,33 @@ export default async function ProfilePage() {
 
     const stats = user.stats;
     const ob = user.onboarding;
-    const score = stats?.reliabilityScore ?? 100;
+
+    const score = stats?.reliabilityScore ?? null;
     const totalTerminal = stats
         ? stats.tasksCompleted + stats.tasksLate + stats.tasksMissed + stats.tasksRejected
         : 0;
+
+    // ── Onboarding labels ─────────────────────────────────────────────────────
+    const domainLabel = ob?.domain?.replace(/_/g, " ") ?? null;
+    const roleLabel = ob?.role?.replace(/_/g, " ") ?? null;
+    const expLabel = ob?.experienceLevel
+        ? ob.experienceLevel.charAt(0) + ob.experienceLevel.slice(1).toLowerCase()
+        : null;
+    const availLabel = ob?.availability
+        ? ({
+            WEEKEND: "Weekends only",
+            LIGHT: "Light — 1–2 hrs/day",
+            MODERATE: "Moderate — 3–5 hrs/day",
+            FULLTIME: "Full-time",
+        } as Record<string, string>)[ob.availability] ?? ob.availability
+        : null;
+    const missionLabel = ob?.mission
+        ? ({
+            JOIN_PROJECT: "Looking to join projects",
+            START_PROJECT: "Building my own project",
+            FIND_TEAM: "Finding a team",
+        } as Record<string, string>)[ob.mission] ?? ob.mission
+        : null;
 
     // ── ProfileCard data ──────────────────────────────────────────────────────
     const cardProjects = user.teams.map(t => ({
@@ -48,21 +71,9 @@ export default async function ProfilePage() {
         role: t.role,
     }));
 
-    const domainLabel = ob?.domain?.replace(/_/g, " ") ?? null;
-    const roleLabel = ob?.role?.replace(/_/g, " ") ?? null;
-    const expLabel = ob?.experienceLevel
-        ? ob.experienceLevel.charAt(0) + ob.experienceLevel.slice(1).toLowerCase()
-        : null;
-    const availLabel = ob?.availability
-        ? (({ WEEKEND: "Weekends only", LIGHT: "Light — 1–2 hrs/day", MODERATE: "Moderate — 3–5 hrs/day", FULLTIME: "Full-time" }) as Record<string, string>)[ob.availability] ?? ob.availability
-        : null;
-    const missionLabel = ob?.mission
-        ? (({ JOIN_PROJECT: "Looking to join projects", START_PROJECT: "Building my own project", FIND_TEAM: "Finding a team" }) as Record<string, string>)[ob.mission] ?? ob.mission
-        : null;
-
     // ── ReliabilityCard data ──────────────────────────────────────────────────
     const reliabilityData = {
-        reliabilityScore: stats?.reliabilityScore ?? 100,
+        reliabilityScore: stats?.reliabilityScore ?? null,
         onTimeRate: stats?.onTimeRate ?? 100,
         tasksCompleted: stats?.tasksCompleted ?? 0,
         tasksLate: stats?.tasksLate ?? 0,
@@ -71,18 +82,23 @@ export default async function ProfilePage() {
     };
 
     const STATUS_COLORS: Record<string, string> = {
-        OPEN: "#22c55e", IN_PROGRESS: "#378ADD", CLOSED: "#666",
-        COMPLETED: "#639922", TERMINATED: "#e24b4a",
+        OPEN: "#22c55e",
+        IN_PROGRESS: "#378ADD",
+        PAUSED: "#facc15",
+        CLOSED: "#666",
+        COMPLETED: "#86efac",
+        TERMINATED: "#e24b4a",
+        ARCHIVED: "#666",
     };
 
     return (
         <>
             <style>{`
                 .prof-wrap  { width: 100%; margin: 0 auto; padding: 20px 16px 60px; }
-                .prof-grid  { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+                .prof-grid  { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
                 .prof-left  { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 12px; }
                 .prof-right { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-                @media (max-width: 880px) {
+                @media (max-width: 860px) {
                     .prof-grid { grid-template-columns: 1fr; }
                     .prof-left { position: static; }
                 }
@@ -91,27 +107,35 @@ export default async function ProfilePage() {
             <div className="prof-wrap">
                 <div className="prof-grid">
 
-                    {/* ══ LEFT — identity card + supporting sections ══ */}
+                    {/* ══ LEFT ══ */}
                     <div className="prof-left">
-
-                        {/* ProfileCard */}
                         <ProfileCard
+                            // identity
                             name={user.name ?? "Builder"}
+                            username={user.username}
                             email={user.email}
                             image={user.image}
+                            bannerImage={user.bannerImage}
+                            bio={user.bio}
+                            // onboarding
                             role={roleLabel}
                             domain={domainLabel}
                             experienceLevel={ob?.experienceLevel ?? null}
                             availability={availLabel}
                             mission={missionLabel}
+                            // preferences
+                            prefTechs={user.preferences?.prefTechs ?? []}
+                            prefTopics={user.preferences?.prefTopics ?? []}
+                            // projects
                             projects={cardProjects}
+                            // trust
                             reliabilityScore={score}
-                            builderScore={ob?.builderScore}
+                            builderScore={ob?.builderScore ?? 0}
                             isOwner={true}
                         />
 
-                        {/* Builder identity */}
-                        <Section label="Builder identity">
+                        {/* Builder identity section */}
+                        <ProfileSection label="Builder identity">
                             {ob ? (
                                 <>
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -149,16 +173,16 @@ export default async function ProfilePage() {
                                     </Link>
                                 </div>
                             )}
-                        </Section>
+                        </ProfileSection>
 
                         {/* Achievements */}
-                        <Section label="Achievements">
+                        <ProfileSection label="Achievements">
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                 {totalTerminal >= 1 && <Badge label="First task" />}
                                 {(stats?.tasksCompleted ?? 0) >= 10 && <Badge label="10 tasks done" />}
                                 {(stats?.tasksCompleted ?? 0) >= 30 && <Badge label="30 tasks done" />}
                                 {(stats?.tasksMissed ?? 0) === 0 && totalTerminal >= 5 && <Badge label="Zero missed" />}
-                                {score >= 90 && totalTerminal >= 5 && <Badge label="Top performer" />}
+                                {(score ?? 0) >= 90 && totalTerminal >= 5 && <Badge label="Top performer" />}
                                 {user.teams.length >= 3 && <Badge label="Multi-project" />}
                                 {totalTerminal === 0 && (
                                     <p style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", margin: 0 }}>
@@ -166,20 +190,17 @@ export default async function ProfilePage() {
                                     </p>
                                 )}
                             </div>
-                            <Placeholder label="team leader · fast reviewer · consistency streak · startup founder" />
-                        </Section>
-
+                            <Placeholder label="team leader · fast reviewer · consistency streak" />
+                        </ProfileSection>
                     </div>
 
-                    {/* ══ RIGHT — execution data ══ */}
+                    {/* ══ RIGHT ══ */}
                     <div className="prof-right">
-
-                        {/* ReliabilityCard */}
                         <ReliabilityCard data={reliabilityData} />
 
                         {/* Active tasks */}
                         {user.assignedTasks.length > 0 && (
-                            <Section label="Active tasks">
+                            <ProfileSection label="Active tasks">
                                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                                     {user.assignedTasks.map(task => {
                                         const overdue = task.dueDate && new Date(task.dueDate) < new Date();
@@ -193,17 +214,15 @@ export default async function ProfilePage() {
                                                     <span style={{
                                                         fontSize: 9, fontWeight: 600, padding: "2px 7px",
                                                         borderRadius: 4, textTransform: "uppercase", flexShrink: 0,
-                                                        background: task.status === "SUBMITTED" ? "rgba(251,191,36,0.1)" :
-                                                            task.status === "IN_PROGRESS" ? "rgba(55,138,221,0.1)" : "var(--surface)",
-                                                        color: task.status === "SUBMITTED" ? "#fbbf24" :
-                                                            task.status === "IN_PROGRESS" ? "#378ADD" : "var(--muted)",
+                                                        background: task.status === "IN_PROGRESS" ? "rgba(55,138,221,0.1)" : "var(--surface)",
+                                                        color: task.status === "IN_PROGRESS" ? "#378ADD" : "var(--muted)",
                                                     }}>
                                                         {task.status.replace("_", " ")}
                                                     </span>
                                                     <span style={{ fontSize: 12, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                         {task.title}
                                                     </span>
-                                                    <span style={{ fontSize: 10, color: "var(--muted)", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 100, whiteSpace: "nowrap" }}>
+                                                    <span style={{ fontSize: 10, color: "var(--muted)", flexShrink: 0, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                         {task.project.title}
                                                     </span>
                                                     {task.dueDate && (
@@ -216,12 +235,12 @@ export default async function ProfilePage() {
                                         );
                                     })}
                                 </div>
-                            </Section>
+                            </ProfileSection>
                         )}
 
                         {/* Project history */}
                         {user.teams.length > 0 && (
-                            <Section label={`Project history (${user.teams.length})`}>
+                            <ProfileSection label={`Project history (${user.teams.length})`}>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                                     {user.teams.map(t => (
                                         <Link key={t.id} href={`/projects/${t.project.id}`} style={{ textDecoration: "none" }}>
@@ -248,17 +267,15 @@ export default async function ProfilePage() {
                                         </Link>
                                     ))}
                                 </div>
-                                <Placeholder label="contribution % · owner feedback · demo / repo links" />
-                            </Section>
+                                <Placeholder label="contribution % · owner feedback · demo links" />
+                            </ProfileSection>
                         )}
 
-                        {/* Contribution timeline */}
-                        <Section label="Contribution timeline">
+                        <ProfileSection label="Contribution timeline">
                             <Placeholder label="activity graph · task streaks · reviews done · teams formed" />
-                        </Section>
+                        </ProfileSection>
 
-                        {/* Team reputation */}
-                        <Section label="Team reputation">
+                        <ProfileSection label="Team reputation">
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
                                 {["Communication", "Execution", "Ownership"].map(r => (
                                     <div key={r} style={{ padding: "10px 8px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--surface2)", textAlign: "center" }}>
@@ -268,21 +285,20 @@ export default async function ProfilePage() {
                                 ))}
                             </div>
                             <Placeholder label="structured ratings from teammates · project owner feedback" />
-                        </Section>
+                        </ProfileSection>
 
-                        {/* Links */}
-                        <Section label="Links">
+                        <ProfileSection label="Links">
                             <Placeholder label="GitHub · LinkedIn · portfolio · Twitter/X" />
-                        </Section>
+                        </ProfileSection>
 
-                        {/* Empty state */}
                         {user.teams.length === 0 && user.assignedTasks.length === 0 && (
                             <div style={{ padding: "32px 20px", borderRadius: 10, border: "0.5px dashed var(--border)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                                 <p style={{ fontSize: 13, color: "var(--muted)" }}>No project activity yet.</p>
-                                <Link href="/projects" style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>Browse projects →</Link>
+                                <Link href="/projects" style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
+                                    Browse projects →
+                                </Link>
                             </div>
                         )}
-
                     </div>
                 </div>
             </div>
@@ -290,9 +306,9 @@ export default async function ProfilePage() {
     );
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function ProfileSection({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div style={{ border: "0.5px solid var(--border)", borderRadius: 10, background: "var(--surface)", overflow: "hidden" }}>
             <div style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--border)" }}>

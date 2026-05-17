@@ -2,130 +2,263 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { pusher } from "@/lib/pusher";
+
+// ─── GET /api/projects ────────────────────────────────────────────────────────
+// Returns all public projects with counts, owner identity, and team avatars
+// for the project card enrichment layer.
 
 export async function GET() {
     const projects = await prisma.project.findMany({
+        where: { visibility: { not: "PRIVATE" } },
         orderBy: { createdAt: "desc" },
         include: {
-            applicants: { select: { userId: true } },
-            _count: { select: { applicants: true } },
+            owner: {
+                select: { id: true, username: true, name: true, image: true },
+            },
+            teams: {
+                where: { active: true },
+                select: {
+                    user: { select: { id: true, image: true, username: true } },
+                },
+                take: 5,
+            },
+            milestones: {
+                select: { progress: true, status: true },
+            },
+            analytics: {
+                select: { views: true, engagementScore: true },
+            },
+            _count: {
+                select: { applicants: true, teams: true },
+            },
         },
     });
-    return NextResponse.json(projects);
+
+    // Compute enriched fields server-side so the card has everything it needs
+    const enriched = projects.map(p => {
+        // Milestone progress: average of all milestone progress values
+        const milestoneProgress =
+            p.milestones.length > 0
+                ? Math.round(
+                    p.milestones.reduce((sum, m) => sum + m.progress, 0) /
+                    p.milestones.length
+                )
+                : null;
+
+        // Urgent = hiring open, has slots, only 1 slot left
+        const slotsLeft =
+            p.maxMembers !== null ? p.maxMembers - p._count.teams : null;
+        const isUrgent =
+            p.hiringOpen &&
+            p.status === "OPEN" &&
+            slotsLeft !== null &&
+            slotsLeft <= 1 &&
+            slotsLeft > 0;
+
+        // Trending = high applicant count relative to team size
+        const isTrending = p._count.applicants >= 5;
+
+        return {
+            ...p,
+            // Flatten owner fields for the card
+            ownerName: p.owner.name ?? p.owner.username,
+            ownerImage: p.owner.image,
+            ownerUsername: p.owner.username,
+            // Team avatars for the stacked avatar UI
+            teamAvatars: p.teams.map(t => t.user.image).filter(Boolean) as string[],
+            // Computed
+            milestoneProgress,
+            isUrgent,
+            isTrending,
+            // Map new field names the card expects
+            projectCategory: p.projectType ?? null,
+            // Dates as ISO strings for client serialization
+            createdAt: p.createdAt.toISOString(),
+            updatedAt: p.updatedAt.toISOString(),
+        };
+    });
+
+    return NextResponse.json(enriched);
 }
 
+// ─── POST /api/projects ───────────────────────────────────────────────────────
+// Creates a new project. Optionally creates a linked community group.
+
 export async function POST(req: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const {
-        title, description, difficulty, maxMembers, techStack, openRoles,
-        liveUrl, repoUrl, createCommunity, communityName,
-    } = await req.json();
-
-    if (!title || !description || !difficulty) {
-        return NextResponse.json({ error: "Title, description, and difficulty are required." }, { status: 400 });
-    }
-
-    // Validate repo URL format
-    if (repoUrl && !repoUrl.includes("github.com") && !repoUrl.includes("gitlab.com") && !repoUrl.includes("bitbucket.org")) {
-        return NextResponse.json({ error: "Repo URL must be a valid GitHub, GitLab, or Bitbucket link." }, { status: 400 });
-    }
-
-    // Check if project URL is reachable
-    if (liveUrl) {
-        try {
-            const res = await fetch(liveUrl, { method: "HEAD", signal: AbortSignal.timeout(5000) });
-            if (!res.ok) {
-                return NextResponse.json({ error: "Project URL is not reachable. Make sure it's live." }, { status: 400 });
-            }
-        } catch {
-            return NextResponse.json({ error: "Could not reach the project URL. Is it live?" }, { status: 400 });
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-    }
 
-    const normalizedTechStack = (techStack ?? []).map((t: string) =>
-        t.toLowerCase().trim()
-    );
+        const body = await req.json();
 
-    const project = await prisma.project.create({
-        data: {
+        const {
+            // Required
             title,
             description,
-            createdBy: session.user.id,
-            status: "OPEN",
             difficulty,
-            techStack: normalizedTechStack,
-            openRoles,
+            // Identity
+            tagline,
+            vision,
+            problemStatement,
+            buildGoal,
+            // Classification
+            domain,
+            projectType,
+            phase,
+            // Team
+            collaborationType,
             maxMembers,
+            // Recruitment
+            openRoles,       // string[] in new schema
+            hiringOpen,
+            contributorExpectations,
+            contributionGuide,
+            // Tech
+            techStack,
+            plannedFeatures,
+            // Settings
+            visibility,
+            estimatedDuration,
+            monetization,
+            // Media
+            coverImage,
+            // Links
             liveUrl,
             repoUrl,
-        },
-    });
+            // Community
+            createCommunity,
+            communityName,
+        } = body;
 
-  
-    // Only notify if project has techStack
-    // After creating the project:
-    if (techStack && techStack.length > 0) {
-        // Normalize project tech stack
-        const normalizedProjectTechs: string[] = techStack
+        // ── Validation ──────────────────────────────────────────────────────
+
+        if (!title?.trim() || !description?.trim() || !difficulty) {
+            return NextResponse.json(
+                { error: "Title, description, and difficulty are required." },
+                { status: 400 }
+            );
+        }
+
+        if (
+            repoUrl &&
+            !repoUrl.includes("github.com") &&
+            !repoUrl.includes("gitlab.com") &&
+            !repoUrl.includes("bitbucket.org")
+        ) {
+            return NextResponse.json(
+                { error: "Repo URL must be a valid GitHub, GitLab, or Bitbucket link." },
+                { status: 400 }
+            );
+        }
+
+        if (liveUrl) {
+            try {
+                const res = await fetch(liveUrl, {
+                    method: "HEAD",
+                    signal: AbortSignal.timeout(5000),
+                });
+                if (!res.ok) {
+                    return NextResponse.json(
+                        { error: "Project URL is not reachable. Make sure it's live." },
+                        { status: 400 }
+                    );
+                }
+            } catch {
+                return NextResponse.json(
+                    { error: "Could not reach the project URL. Is it live?" },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // ── Normalize arrays ─────────────────────────────────────────────────
+
+        const normalizedTechStack: string[] = (techStack ?? [])
             .map((t: string) => t.toLowerCase().trim())
             .filter(Boolean);
 
-        if (normalizedProjectTechs.length > 0) {
-            // Get ALL user preferences
-            const allPrefs = await prisma.userPreferences.findMany({
-                where: { userId: { not: session.user.id } },
-                select: { userId: true, prefTechs: true },
-            });
+        const normalizedOpenRoles: string[] = (openRoles ?? [])
+            .map((r: string) => r.trim())
+            .filter(Boolean);
 
-            // Filter in code with normalized comparison (bulletproof)
-            const matchingUsers = allPrefs.filter(pref => {
-                if (!pref.prefTechs || pref.prefTechs.length === 0) return false;
-                const normalizedPrefTechs: string[] = pref.prefTechs
-                    .map((t: string) => t.toLowerCase().trim());
-                return normalizedProjectTechs.some((pt) => normalizedPrefTechs.includes(pt));
-            });
+        const normalizedPlannedFeatures: string[] = (plannedFeatures ?? [])
+            .map((f: string) => f.trim())
+            .filter(Boolean);
 
-            const matchedTechDisplay = techStack.slice(0, 2).join(", ");
+        // ── Create project ───────────────────────────────────────────────────
 
-            await Promise.all(
-                matchingUsers.map(async (pref) => {
-                    const notif = await prisma.notification.create({
-                        data: {
-                            userId: pref.userId,
-                            title: "New project matches your stack",
-                            body: `"${title}" uses ${matchedTechDisplay}${techStack.length > 2 ? " and more" : ""}.`,
-                            href: `/projects/${project.id}`,
-                        },
-                    });
-
-                    await pusher.trigger(`user-${pref.userId}`, "notification:new", notif);
-                })
-              );
-        }
-    }
-    // If no techStack → notify NOBODY (removed global notification fallback)
-
-   
-
-    // Create community group if requested
-    if (createCommunity) {
-        const group = await prisma.communityGroup.create({
+        const project = await prisma.project.create({
             data: {
-                name: `${communityName || title} · ${project.id.slice(0, 6)}`,
-                description: `Community for the "${title}" project`,
+                title: title.trim(),
+                description: description.trim(),
+                tagline: tagline?.trim() ?? null,
+                vision: vision?.trim() ?? null,
+                problemStatement: problemStatement?.trim() ?? null,
+                buildGoal: buildGoal?.trim() ?? null,
                 createdBy: session.user.id,
-                members: { create: { userId: session.user.id, role: "ADMIN", status: "ACTIVE" } },
+                status: "OPEN",
+                visibility: visibility ?? "PUBLIC",
+                difficulty,
+                domain: domain ?? null,
+                projectType: projectType ?? null,
+                phase: phase ?? "IDEA",
+                collaborationType: collaborationType ?? "TEAM",
+                maxMembers: maxMembers ? Number(maxMembers) : null,
+                openRoles: normalizedOpenRoles,
+                hiringOpen: hiringOpen !== false,
+                contributorExpectations: contributorExpectations?.trim() ?? null,
+                contributionGuide: contributionGuide?.trim() ?? null,
+                techStack: normalizedTechStack,
+                plannedFeatures: normalizedPlannedFeatures,
+                estimatedDuration: estimatedDuration ?? null,
+                monetization: monetization ?? null,
+                coverImage: coverImage ?? null,
+                liveUrl: liveUrl?.trim() ?? null,
+                repoUrl: repoUrl?.trim() ?? null,
             },
         });
 
-        await prisma.project.update({
-            where: { id: project.id },
-            data: { communityGroupId: group.id },
+        // Add creator as OWNER team member
+        await prisma.teamMember.create({
+            data: {
+                projectId: project.id,
+                userId: session.user.id,
+                role: "owner",
+                permissionLevel: "OWNER",
+                active: true,
+            },
         });
-    }
 
-    return NextResponse.json(project, { status: 201 });
+        // Create community group if requested
+        if (createCommunity) {
+            const group = await prisma.communityGroup.create({
+                data: {
+                    name: communityName?.trim()
+                        ? communityName.trim()
+                        : `${title.trim()} Community`,
+                    description: `Community for the "${title.trim()}" project`,
+                    createdBy: session.user.id,
+                    members: {
+                        create: {
+                            userId: session.user.id,
+                            role: "ADMIN",
+                            status: "ACTIVE",
+                        },
+                    },
+                },
+            });
+
+            await prisma.project.update({
+                where: { id: project.id },
+                data: { communityGroupId: group.id },
+            });
+        }
+
+        return NextResponse.json(project, { status: 201 });
+    } catch (error) {
+        console.error("PROJECT_CREATE_ERROR:", error);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
 }
