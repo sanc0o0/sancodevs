@@ -177,7 +177,7 @@ export default function ProjectsClient({
                         </Link>
                     </div>
 
-                    {/* Quick filter chips */}
+                    {/* Quick filter chips
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                         {QUICK_FILTERS.map(qf => {
                             const active = filters[qf.key as keyof ActiveFilters]?.includes(qf.value);
@@ -197,7 +197,7 @@ export default function ProjectsClient({
                                 </button>
                             );
                         })}
-                    </div>
+                    </div> */}
 
                     {/* Search + sort */}
                     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>

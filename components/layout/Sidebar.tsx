@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
 const links = [
     {
@@ -60,14 +59,57 @@ const links = [
 
 export default function Sidebar() {
     const pathname = usePathname();
-    const [pathLabel, setPathLabel] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetch("/api/onboarding/me")
-            .then(r => r.json())
-            .then(d => setPathLabel(d.label ?? null))
-            .catch(() => { });
-    }, []);
+    function getCurrentFocus(pathname: string) {
+
+        // ── WORKSPACE ─────────────────────────────────────
+        if (pathname.startsWith("/workspace")) {
+            return {
+                title: "2 assigned tasks due tomorrow",
+                subtle: "Workspace activity needs attention",
+            };
+        }
+
+        // ── PROJECTS ──────────────────────────────────────
+        if (pathname.startsWith("/projects")) {
+            return {
+                title: "3 applications awaiting review",
+                subtle: "Some builders are waiting for response",
+            };
+        }
+
+        // ── COMMUNITY ─────────────────────────────────────
+        if (pathname.startsWith("/community")) {
+            return {
+                title: "Unread team messages",
+                subtle: "Your collaborators are active",
+            };
+        }
+
+        // ── PROFILE ───────────────────────────────────────
+        if (pathname.startsWith("/profile")) {
+            return {
+                title: "Complete your builder profile",
+                subtle: "Profiles with details get more visibility",
+            };
+        }
+
+        // ── DASHBOARD ─────────────────────────────────────
+        if (pathname.startsWith("/dashboard")) {
+            return {
+                title: "1 project milestone due this week",
+                subtle: "Keep your momentum consistent",
+            };
+        }
+
+        // ── FALLBACK ──────────────────────────────────────
+        return {
+            title: "No urgent activity right now",
+            subtle: "Everything looks under control",
+        };
+    }
+
+    const currentFocus = getCurrentFocus(pathname);
 
     return (
         <aside style={{
@@ -106,7 +148,6 @@ export default function Sidebar() {
                 })}
             </nav>
 
-            {/* Sticky bottom — current path card */}
             <div style={{ padding: "1rem" }}>
                 <div style={{
                     padding: "10px 12px",
@@ -115,10 +156,23 @@ export default function Sidebar() {
                     background: "var(--surface)",
                 }}>
                     <p style={{ fontSize: "10px", color: "var(--muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Current path
+                        Current focus
                     </p>
-                    <p style={{ fontSize: "12px", color: "var(--text)", fontWeight: 500, lineHeight: 1.4 }}>
-                        {pathLabel ?? "—"}
+                    <p style={{ fontSize: "11px", color: "var(--text)", fontWeight: 300, lineHeight: 1.4 }}>
+                        <>
+                            <span>{currentFocus.title}</span>
+
+                            <span style={{
+                                display: "block",
+                                marginTop: "5px",
+                                fontSize: "10px",
+                                color: "var(--muted)",
+                                fontWeight: 400,
+                                lineHeight: 1.5,
+                            }}>
+                                {currentFocus.subtle}
+                            </span>
+                        </>
                     </p>
                 </div>
             </div>

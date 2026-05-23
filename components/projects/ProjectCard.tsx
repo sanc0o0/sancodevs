@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
+import UserAvatar from "@/components/ui/UserAvatar";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 // Mirrors the new Prisma schema. Key changes from old schema:
@@ -142,95 +142,41 @@ function getCtaConfig(
     return { label: "View project", href, style: "ghost" };
 }
 
-function stringToColor(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    return `hsl(${Math.abs(hash) % 360}, 40%, 42%)`;
-}
 
-function initials(name: string): string {
-    return name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-}
-
-// ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
-
-function Avatar({ src, name, size = 22 }: { src?: string | null; name: string; size?: number }) {
-    if (src) {
-        return (
-            <Image
-                src={src}
-                alt={name}
-                width={size}
-                height={size}
-                style={{
-                    width: size,
-                    height: size,
-                    minWidth: size,
-                    minHeight: size,
-                    maxWidth: size,
-                    maxHeight: size,
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    border: "1.5px solid var(--bg)",
-                    flexShrink: 0,
-                    display: "block",
-                }}
-            />
-        );
-    }
-    return (
-        <div style={{
-            width: size, height: size, minWidth: size, minHeight: size,
-            borderRadius: "50%",
-            background: stringToColor(name),
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: size * 0.38, fontWeight: 700, color: "#fff",
-            border: "1.5px solid var(--bg)", flexShrink: 0, letterSpacing: "-0.02em",
-            overflow: "hidden",
-        }}>
-            {initials(name)}
-        </div>
-    );
-}
-
-function TeamAvatarStack({ avatars, filled, max }: { avatars: string[]; filled: number; max: number | null }) {
+// SimpleAvatarStack — image-URL only, no user ID, so no link.
+// Used on project cards where we only have avatar URLs, not full user data.
+function SimpleAvatarStack({ avatars, filled, max }: { avatars: string[]; filled: number; max: number | null }) {
     const shown = avatars.slice(0, 4);
     const overflow = filled - shown.length;
     return (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ display: "flex", alignItems: "center" }}>
-                {shown.length > 0
-                    ? shown.map((src, i) => (
-                        <div key={i} style={{ marginLeft: i === 0 ? 0 : -7, lineHeight: 0, flexShrink: 0 }}>
-                            <Avatar src={src} name="Member" size={22} />
+                {shown.length > 0 ? (
+                    shown.map((src, i) => (
+                        <div key={i} style={{ marginLeft: i === 0 ? 0 : -8, lineHeight: 0, flexShrink: 0 }}>
+                            <img src={src} alt="Member"
+                                style={{ width: 22, height: 22, minWidth: 22, minHeight: 22, borderRadius: "50%", objectFit: "cover", border: "1.5px solid var(--bg)", display: "block" }}
+                            />
                         </div>
                     ))
-                    : filled > 0
-                        ? <Avatar src={null} name="Team" size={22} />
-                        : null
-                }
+                ) : filled > 0 ? (
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--surface2)", border: "1.5px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--muted)", fontWeight: 700 }}>
+                        {filled}
+                    </div>
+                ) : null}
                 {overflow > 0 && (
-                    <div style={{
-                        marginLeft: -7,
-                        width: 22, height: 22, minWidth: 22, minHeight: 22,
-                        borderRadius: "50%",
-                        background: "var(--surface2)", border: "1.5px solid var(--bg)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 9, color: "var(--muted)", fontWeight: 600, flexShrink: 0,
-                    }}>
+                    <div style={{ marginLeft: -8, width: 22, height: 22, minWidth: 22, minHeight: 22, borderRadius: "50%", background: "var(--surface2)", border: "1.5px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--muted)", fontWeight: 600, flexShrink: 0 }}>
                         +{overflow}
                     </div>
                 )}
             </div>
             <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                {max !== null
-                    ? `${filled}/${max} members`
-                    : `${filled} member${filled !== 1 ? "s" : ""}`
-                }
+                {max !== null ? `${filled}/${max} members` : `${filled} member${filled !== 1 ? "s" : ""}`}
             </span>
         </div>
     );
 }
+
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
@@ -306,7 +252,15 @@ export default function ProjectCard({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 {p.ownerName && (
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar src={p.ownerImage} name={p.ownerName} size={20} />
+                        {p.createdBy && p.ownerName ? (
+                            <UserAvatar
+                                userId={p.createdBy}
+                                name={p.ownerName}
+                                image={p.ownerImage}
+                                size={20}
+                                showTooltip
+                            />
+                        ) : null}
                         <span style={{ fontSize: 11, color: "var(--muted)" }}>
                             {p.ownerUsername ?? p.ownerName}
                         </span>
@@ -480,7 +434,7 @@ export default function ProjectCard({
                 paddingTop: 8, borderTop: "0.5px solid var(--border)",
             }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                    <TeamAvatarStack avatars={teamAvatars} filled={filled} max={maxMembers} />
+                    <SimpleAvatarStack avatars={teamAvatars} filled={filled} max={maxMembers} />
                     <span style={{ fontSize: 11, color: "var(--muted)" }}>{p._count.applicants} applied</span>
                     {p.estimatedDuration && (
                         <span style={{ fontSize: 11, color: "var(--muted)" }}>
