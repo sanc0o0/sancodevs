@@ -57,7 +57,8 @@ model User {
   taskAssignmentRequests TaskAssignmentRequest[]
   teams                  TeamMember[]
   savedProjects          SavedProject[]
-
+  reliabilityEvents      ReliabilityEvent[]
+  userAchievements       UserAchievement[]
   /// User systems
   sessions    Session[]
   activity    UserActivity?
@@ -713,6 +714,46 @@ model UserStats {
 }
 
 /// ─────────────────────────────────────────────────────────────
+/// RELIABILITY EVENT
+/// Immutable log of behavioral events that affect reliability.
+/// Written when a task reaches a terminal state.
+/// Source of truth for the reliability timeline.
+/// ─────────────────────────────────────────────────────────────
+model ReliabilityEvent {
+  id     String @id @default(uuid())
+  userId String
+
+  /// COMPLETED | LATE | MISSED | REJECTED | REVIEWED
+  eventType String
+
+  /// Score delta this event caused (positive or negative)
+  /// Stored so we can show "this task added +2 to your score"
+  scoreDelta Float @default(0)
+
+  /// Source task (nullable — future events may not be task-based)
+  taskId    String?
+  taskTitle String?
+
+  /// Source project context (public label only — NOT internal title)
+  projectId    String?
+  projectLabel String?
+
+  /// When the event occurred
+  occurredAt DateTime @default(now())
+
+  /// Whether this event is visible to public viewers
+  /// false = owner only
+  isPublic Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, occurredAt])
+  @@index([userId, eventType])
+}
+
+
+/// ─────────────────────────────────────────────────────────────
 /// TASK ASSIGNMENT REQUEST
 /// User requests ownership of a task.
 /// Useful for open-source style collaboration.
@@ -735,6 +776,54 @@ model TaskAssignmentRequest {
   user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, userId])
+}
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// ACHIEVEMENT DEFINITION
+/// Platform-defined achievement catalog.
+/// Managed server-side only — never unlocked from client.
+/// ─────────────────────────────────────────────────────────────────────────────
+model AchievementDefinition {
+  id          String  @id @default(cuid())
+
+  /// Stable unique key used as reference in code
+  /// Examples: "FIRST_TASK", "RELIABLE_BUILDER", "EARLY_USER"
+  key         String  @unique
+
+  title       String
+  description String
+  icon        String
+  rarity      String  // COMMON | UNCOMMON | RARE | EPIC | LEGENDARY | SPECIAL
+  theme       String  // onboarding | projects | contributions | community | reputation | special
+  points      Int     @default(0)
+
+  /// Whether this achievement can still be earned
+  active      Boolean @default(true)
+
+  /// For hidden achievements (visible only once earned)
+  hidden      Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+}
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// USER ACHIEVEMENT
+/// Immutable record of a user earning an achievement.
+/// Written by server-side evaluateAchievements() only.
+/// ─────────────────────────────────────────────────────────────────────────────
+model UserAchievement {
+  id             String   @id @default(cuid())
+  userId         String
+  achievementKey String
+
+  earnedAt       DateTime @default(now())
+  sharedCount    Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementKey])
+  @@index([userId])
+  @@index([userId, earnedAt])
 }
 
 enum MemberStatus {

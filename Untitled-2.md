@@ -1,6 +1,6 @@
 # File Tree: sancodevs
 
-**Generated:** 5/16/2026, 1:19:57 AM
+**Generated:** 5/26/2026, 10:05:04 PM
 **Root Path:** `c:\Users\abulk\sancodevs`
 
 ```
@@ -25,6 +25,8 @@
 │   │   │   └── 📄 page.tsx
 │   │   ├── 📁 dashboard
 │   │   │   └── 📄 page.tsx
+│   │   ├── 📁 manage
+│   │   │   └── 📄 page.tsx
 │   │   ├── 📁 notifications
 │   │   │   ├── 📄 NotificationsClient.tsx
 │   │   │   └── 📄 page.tsx
@@ -39,6 +41,8 @@
 │   │   │   │   ├── 📄 ApplicantActions.tsx
 │   │   │   │   ├── 📄 CopyButton.tsx
 │   │   │   │   ├── 📄 JoinRequestButton.tsx
+│   │   │   │   ├── 📄 MobileActions.tsx
+│   │   │   │   ├── 📄 SaveProjectButton.tsx
 │   │   │   │   └── 📄 page.tsx
 │   │   │   ├── 📁 new
 │   │   │   │   └── 📄 page.tsx
@@ -56,6 +60,17 @@
 │   │   │       ├── 📄 BlockButton.tsx
 │   │   │       ├── 📄 ProfileTabs.tsx
 │   │   │       └── 📄 page.tsx
+│   │   ├── 📁 workspace
+│   │   │   ├── 📄 Activity.tsx
+│   │   │   ├── 📄 Applications.tsx
+│   │   │   ├── 📄 Archived.tsx
+│   │   │   ├── 📄 Created.tsx
+│   │   │   ├── 📄 Joined.tsx
+│   │   │   ├── 📄 Saved.tsx
+│   │   │   ├── 📄 Tasks.tsx
+│   │   │   ├── 📄 WorkspaceShell.tsx
+│   │   │   ├── 📄 page.tsx
+│   │   │   └── 📄 types.ts
 │   │   └── 📄 layout.tsx
 │   ├── 📁 (marketing)
 │   │   ├── 📁 about
@@ -163,8 +178,6 @@
 │   │   │   └── 📄 route.ts
 │   │   ├── 📁 profile
 │   │   │   └── 📄 route.ts
-│   │   ├── 📁 progress
-│   │   │   └── 📄 route.ts
 │   │   ├── 📁 projects
 │   │   │   ├── 📁 [id]
 │   │   │   │   ├── 📁 tasks
@@ -179,10 +192,14 @@
 │   │   │   │   │   ├── 📁 mark-missed
 │   │   │   │   │   │   └── 📄 route.ts
 │   │   │   │   │   └── 📄 route.ts
+│   │   │   │   ├── 📁 updates
+│   │   │   │   │   └── 📄 route.ts
 │   │   │   │   └── 📄 route.ts
 │   │   │   ├── 📁 applications
 │   │   │   │   └── 📄 route.ts
 │   │   │   ├── 📁 apply
+│   │   │   │   └── 📄 route.ts
+│   │   │   ├── 📁 save
 │   │   │   │   └── 📄 route.ts
 │   │   │   ├── 📁 seen
 │   │   │   │   └── 📄 route.ts
@@ -194,12 +211,31 @@
 │   │   │       └── 📄 route.ts
 │   │   ├── 📁 tasks
 │   │   ├── 📁 upload
+│   │   │   ├── 📁 profile-image
+│   │   │   │   └── 📄 route.ts
+│   │   │   ├── 📁 project-image
+│   │   │   │   └── 📄 route.ts
 │   │   │   └── 📁 resume
 │   │   │       └── 📄 route.ts
-│   │   └── 📁 users
-│   │       └── 📁 [userId]
-│   │           └── 📁 stats
-│   │               └── 📄 route.ts
+│   │   ├── 📁 users
+│   │   │   └── 📁 [userId]
+│   │   │       ├── 📁 reliability
+│   │   │       │   └── 📄 route.ts
+│   │   │       └── 📁 stats
+│   │   │           └── 📄 route.ts
+│   │   └── 📁 workspace
+│   │       ├── 📁 activity
+│   │       │   └── 📄 route.ts
+│   │       ├── 📁 applications
+│   │       │   └── 📄 route.ts
+│   │       ├── 📁 archived
+│   │       │   └── 📄 route.ts
+│   │       ├── 📁 joined
+│   │       │   └── 📄 route.ts
+│   │       ├── 📁 saved
+│   │       │   └── 📄 route.ts
+│   │       └── 📁 tasks
+│   │           └── 📄 route.ts
 │   ├── 🎨 globals.css
 │   ├── 🖼️ icon.svg
 │   ├── 📄 layout.tsx
@@ -225,12 +261,51 @@
 │   │   ├── 📄 OnboardingLayout.tsx
 │   │   ├── 📄 OnboardingProgress.tsx
 │   │   ├── 📄 RoleSelection.tsx
-│   │   ├── 📄 SkillPicker.tsx
 │   │   ├── 📄 StepIndicator.tsx
 │   │   ├── 📄 TeamPreferenceSelection.tsx
 │   │   ├── 📄 UsernameSelection.tsx
 │   │   └── 📄 WorkPreferenceSelection.tsx
 │   ├── 📁 profile
+│   │   ├── 📁 reliability
+│   │   │   ├── 📁 activity
+│   │   │   │   ├── 📄 ReliabilityActivityEmptyState.tsx
+│   │   │   │   ├── 📄 ReliabilityActivityGraph.tsx
+│   │   │   │   ├── 📄 ReliabilityActivityLegend.tsx
+│   │   │   │   ├── 📄 ReliabilityActivitySection.tsx
+│   │   │   │   ├── 📄 ReliabilityTimeframeSwitcher.tsx
+│   │   │   │   └── 📄 ReliabilityTooltip.tsx
+│   │   │   ├── 📁 hero
+│   │   │   │   ├── 📄 ReliabilityHero.tsx
+│   │   │   │   ├── 📄 ReliabilityScoreRing.tsx
+│   │   │   │   ├── 📄 ReliabilityTierBadge.tsx
+│   │   │   │   └── 📄 ReliabilityTrendSignal.tsx
+│   │   │   ├── 📁 hooks
+│   │   │   │   ├── 📄 useReliabilityData.ts
+│   │   │   │   └── 📄 useReliabilityTrend.ts
+│   │   │   ├── 📁 info
+│   │   │   │   └── 📄 ReliabilityInfoDrawer.tsx
+│   │   │   ├── 📁 insights
+│   │   │   │   ├── 📄 ReliabilityInsightRow.tsx
+│   │   │   │   └── 📄 ReliabilityInsights.tsx
+│   │   │   ├── 📁 shared
+│   │   │   │   ├── 📄 ReliabilityEmpty.tsx
+│   │   │   │   ├── 📄 ReliabilitySection.tsx
+│   │   │   │   └── 📄 ReliabilitySkeleton.tsx
+│   │   │   ├── 📁 states
+│   │   │   │   ├── 📄 ReliabilityErrorState.tsx
+│   │   │   │   └── 📄 ReliabilityNewUserState.tsx
+│   │   │   ├── 📁 timeline
+│   │   │   │   ├── 📄 ReliabilityTimeline.tsx
+│   │   │   │   └── 📄 ReliabilityTimelineEvent.tsx
+│   │   │   ├── 📁 types
+│   │   │   │   ├── 📄 reliability.api.types.ts
+│   │   │   │   └── 📄 reliability.types.ts
+│   │   │   ├── 📁 utils
+│   │   │   │   ├── 📄 computeReliabilityScore.ts
+│   │   │   │   ├── 📄 computeReliabilityTier.ts
+│   │   │   │   ├── 📄 computeReliabilityTrend.ts
+│   │   │   │   └── 📄 normalizeReliabilityEvents.ts
+│   │   │   └── 📄 ReliabilityTab.tsx
 │   │   ├── 📄 ProfileCard.tsx
 │   │   └── 📄 ReliabilityCard.tsx
 │   ├── 📁 projects
@@ -245,10 +320,11 @@
 │   │   ├── 📄 EmptyState.tsx
 │   │   ├── 📄 PageContainer.tsx
 │   │   ├── 📄 SectionHeader.tsx
-│   │   └── 📄 StatCard.tsx
+│   │   ├── 📄 StatCard.tsx
+│   │   └── 📄 UserAvatar.tsx
 │   └── 📄 loginButtons.tsx
 ├── 📁 lib
-│   ├── 📄 auth.ts
+│   ├── 📄 auth-helpers.ts
 │   ├── 📄 email.ts
 │   ├── 📄 prisma.ts
 │   ├── 📄 pusher-client.ts
@@ -260,6 +336,14 @@
 ├── 📁 prisma
 │   ├── 📁 migrations
 │   │   ├── 📁 20260515185715_init_clean_architecture
+│   │   │   └── 📄 migration.sql
+│   │   ├── 📁 20260515202848_add_submitted_at
+│   │   │   └── 📄 migration.sql
+│   │   ├── 📁 20260517104725_add_task_review_fields
+│   │   │   └── 📄 migration.sql
+│   │   ├── 📁 20260518034305_add_saved_projects_and_update_visibility
+│   │   │   └── 📄 migration.sql
+│   │   ├── 📁 20260525044758_add_reliability_events
 │   │   │   └── 📄 migration.sql
 │   │   └── ⚙️ migration_lock.toml
 │   └── 📄 schema.prisma

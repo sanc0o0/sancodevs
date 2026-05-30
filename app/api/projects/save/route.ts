@@ -1,64 +1,78 @@
-// app/api/projects/save/route.ts
-
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-// ─── Resolve real DB user from session email ──────────────────────────────────
-// session.user.id is correctly set via JWT callback for established sessions,
-// but using email as the lookup is a safe double-guarantee for all auth methods.
-async function resolveUserId(email: string | null | undefined): Promise<string | null> {
-    if (!email) return null;
+// ── GET — check if current user has saved this project ───────────────────────
+
+export async function GET(req: NextRequest) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const projectId = req.nextUrl.searchParams.get("projectId");
+    if (!projectId) {
+        return NextResponse.json({ error: "projectId required" }, { status: 400 });
+    }
+
     const user = await prisma.user.findUnique({
-        where: { email },
+        where: { email: session.user.email },
         select: { id: true },
     });
-    return user?.id ?? null;
-}
-
-// GET — check if current user has saved a project
-// /api/projects/save?projectId=xxx
-export async function GET(req: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ saved: false }, { status: 401 });
-
-    const userId = await resolveUserId(session.user.email);
-    if (!userId) return NextResponse.json({ saved: false }, { status: 401 });
-
-    const { searchParams } = new URL(req.url);
-    const projectId = searchParams.get("projectId");
-    if (!projectId) return NextResponse.json({ saved: false }, { status: 400 });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const saved = await prisma.savedProject.findUnique({
-        where: { userId_projectId: { userId, projectId } },
+        where: { userId_projectId: { userId: user.id, projectId } },
         select: { id: true },
     });
 
     return NextResponse.json({ saved: !!saved });
 }
 
-// POST — toggle save
-export async function POST(req: Request) {
+// ── POST — toggle save / unsave ───────────────────────────────────────────────
+
+export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.email) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const userId = await resolveUserId(session.user.email);
-    if (!userId) return NextResponse.json({ error: "User not found." }, { status: 404 });
+    const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true },
+    });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { projectId } = await req.json();
-    if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
+    const { projectId } = await req.json() as { projectId?: string };
+    if (!projectId) {
+        return NextResponse.json({ error: "projectId required" }, { status: 400 });
+    }
+
+    // Verify project exists
+    const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { id: true },
+    });
+    if (!project) {
+        return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
 
     const existing = await prisma.savedProject.findUnique({
-        where: { userId_projectId: { userId, projectId } },
+        where: { userId_projectId: { userId: user.id, projectId } },
+        select: { id: true },
     });
 
     if (existing) {
-        await prisma.savedProject.delete({ where: { id: existing.id } });
+        // Already saved → unsave
+        await prisma.savedProject.delete({
+            where: { userId_projectId: { userId: user.id, projectId } },
+        });
         return NextResponse.json({ saved: false });
     } else {
+        // Not saved → save
         await prisma.savedProject.create({
-            data: { userId, projectId },
+            data: { userId: user.id, projectId },
         });
         return NextResponse.json({ saved: true });
     }

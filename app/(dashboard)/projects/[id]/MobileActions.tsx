@@ -11,6 +11,7 @@ interface Props {
     liveUrl: string | null;
     repoUrl: string | null;
     currentStatus: string;
+    initialSaved?: boolean;
 }
 
 export default function MobileActions({
@@ -20,8 +21,11 @@ export default function MobileActions({
     liveUrl,
     repoUrl,
     currentStatus,
+    initialSaved = false,
 }: Props) {
     const [open, setOpen] = useState(false);
+    const [saved, setSaved] = useState(initialSaved);
+    const [saving, setSaving] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -38,8 +42,29 @@ export default function MobileActions({
         return () => document.removeEventListener("mousedown", onDown);
     }, [open]);
 
-    const hasItems = isInsider || liveUrl || repoUrl || isOwner;
-    if (!hasItems) return null;
+    async function toggleSave() {
+        if (saving) return;
+        setSaving(true);
+        setSaved(prev => !prev); // optimistic
+        try {
+            const res = await fetch("/api/projects/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ projectId }),
+            });
+            if (res.ok) {
+                const data = await res.json() as { saved: boolean };
+                setSaved(data.saved);
+            } else {
+                setSaved(prev => !prev); // revert
+            }
+        } catch {
+            setSaved(prev => !prev); // revert
+        } finally {
+            setSaving(false);
+            setOpen(false);
+        }
+    }
 
     return (
         <div style={{ position: "relative" }}>
@@ -55,7 +80,6 @@ export default function MobileActions({
                     cursor: "pointer", transition: "border-color 0.15s",
                 }}
             >
-                {/* Three dots vertical */}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="5" r="1.5" fill="var(--muted)" />
                     <circle cx="12" cy="12" r="1.5" fill="var(--muted)" />
@@ -66,7 +90,6 @@ export default function MobileActions({
             {/* Dropdown */}
             {open && (
                 <>
-                    {/* Backdrop */}
                     <div
                         style={{ position: "fixed", inset: 0, zIndex: 199 }}
                         onClick={() => setOpen(false)}
@@ -137,9 +160,31 @@ export default function MobileActions({
                             </MenuItem>
                         )}
 
+                        {/* Save / unsave */}
+                        <MenuItem onClick={toggleSave}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", opacity: saving ? 0.5 : 1 }}>
+                                <svg
+                                    width="13" height="13" viewBox="0 0 24 24"
+                                    fill={saved ? "var(--text)" : "none"}
+                                    stroke="var(--muted)" strokeWidth="1.8"
+                                    style={{ transition: "fill 0.15s" }}
+                                >
+                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                </svg>
+                                <span style={{ color: saved ? "var(--text)" : "inherit" }}>
+                                    {saving ? "Saving…" : saved ? "Saved" : "Save project"}
+                                </span>
+                                {saved && !saving && (
+                                    <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--muted)" }}>
+                                        ✓
+                                    </span>
+                                )}
+                            </div>
+                        </MenuItem>
+
                         {/* Status control — owner only */}
                         {isOwner && (
-                            <div style={{ borderTop: (isInsider || liveUrl || repoUrl) ? "0.5px solid var(--border)" : "none" }}>
+                            <div style={{ borderTop: "0.5px solid var(--border)" }}>
                                 <div style={{ padding: "10px 14px" }}>
                                     <p style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
                                         Update status

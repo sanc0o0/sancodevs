@@ -4,14 +4,6 @@ import Link from "next/link";
 import { useMemo } from "react";
 import UserAvatar from "@/components/ui/UserAvatar";
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-// Mirrors the new Prisma schema. Key changes from old schema:
-//   lookingFor  (string)   → openRoles (string[])
-//   timeToComplete         → estimatedDuration
-//   complexityType         → removed
-//   projectUrl             → liveUrl
-//   featuresIncluded       → plannedFeatures / completedFeatures
-
 export interface ProjectCardProject {
     id: string;
     title: string;
@@ -89,11 +81,6 @@ const DOMAIN_ACCENT: Record<string, string> = {
     mobile: "#38bdf8",
     data: "#facc15",
 };
-
-// Phase and status are architecturally separate:
-//   status = operational state  (OPEN, PAUSED, COMPLETED…)
-//   phase  = product maturity   (IDEA → LAUNCHED)
-// Phase gets a distinct color ramp — not the same muted chip as difficulty.
 const PHASE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
     IDEA: { label: "Idea", color: "#94a3b8", bg: "rgba(148,163,184,0.08)" },
     PLANNING: { label: "Planning", color: "#60a5fa", bg: "rgba(96,165,250,0.08)" },
@@ -143,8 +130,6 @@ function getCtaConfig(
 }
 
 
-// SimpleAvatarStack — image-URL only, no user ID, so no link.
-// Used on project cards where we only have avatar URLs, not full user data.
 function SimpleAvatarStack({ avatars, filled, max }: { avatars: string[]; filled: number; max: number | null }) {
     const shown = avatars.slice(0, 4);
     const overflow = filled - shown.length;

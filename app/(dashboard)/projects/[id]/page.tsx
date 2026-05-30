@@ -1,3 +1,5 @@
+// app/(dashboard)/projects/[id]/page.tsx
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +11,7 @@ import ProjectStatusControl from "../ProjectStatusControl";
 import CopyButton from "./CopyButton";
 import AccordionSections from "./AccordionSections";
 import MobileActions from "./MobileActions";
+import SaveProjectButton from "./SaveProjectButton";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -58,47 +61,62 @@ export default async function ProjectDetailPage({
     const session = await getServerSession(authOptions);
     if (!session) redirect("/login");
 
+    // Resolve real DB viewer by email — OAuth safe
+    const viewer = await prisma.user.findUnique({
+        where: { email: session.user.email! },
+        select: { id: true },
+    });
+    if (!viewer) redirect("/login");
+
     const { id } = await params;
 
-    const project = await prisma.project.findUnique({
-        where: { id },
-        include: {
-            owner: {
-                select: { id: true, username: true, name: true, image: true },
-            },
-            applicants: {
-                include: {
-                    user: { select: { id: true, name: true, username: true, email: true, image: true } },
+    // Parallel fetch: project + saved status
+    const [project, savedRecord] = await Promise.all([
+        prisma.project.findUnique({
+            where: { id },
+            include: {
+                owner: {
+                    select: { id: true, username: true, name: true, image: true },
                 },
-                orderBy: { createdAt: "desc" },
-            },
-            teams: {
-                where: { active: true },
-                include: {
-                    user: { select: { id: true, name: true, username: true, image: true } },
+                applicants: {
+                    include: {
+                        user: { select: { id: true, name: true, username: true, email: true, image: true } },
+                    },
+                    orderBy: { createdAt: "desc" },
                 },
-                orderBy: { joinedAt: "asc" },
+                teams: {
+                    where: { active: true },
+                    include: {
+                        user: { select: { id: true, name: true, username: true, image: true } },
+                    },
+                    orderBy: { joinedAt: "asc" },
+                },
+                milestones: {
+                    orderBy: { order: "asc" },
+                    take: 6,
+                },
+                updates: {
+                    orderBy: { createdAt: "desc" },
+                    take: 5,
+                },
+                analytics: {
+                    select: { views: true },
+                },
             },
-            milestones: {
-                orderBy: { order: "asc" },
-                take: 6,
-            },
-            updates: {
-                orderBy: { createdAt: "desc" },
-                take: 5,
-            },
-            analytics: {
-                select: { views: true },
-            },
-        },
-    });
+        }),
+        prisma.savedProject.findUnique({
+            where: { userId_projectId: { userId: viewer.id, projectId: id } },
+            select: { id: true },
+        }),
+    ]);
 
     if (!project) notFound();
 
-    const isOwner = project.createdBy === session.user.id;
-    const isMember = project.teams.some(t => t.userId === session.user.id);
-    const hasApplied = project.applicants.some(a => a.userId === session.user.id);
+    const isOwner = project.createdBy === viewer.id;
+    const isMember = project.teams.some(t => t.userId === viewer.id);
+    const hasApplied = project.applicants.some(a => a.userId === viewer.id);
     const isInsider = isOwner || isMember;
+    const initialSaved = !!savedRecord;
 
     const statusCfg = STATUS_CFG[project.status] ?? STATUS_CFG.OPEN;
     const phaseCfg = PHASE_CFG[project.phase] ?? null;
@@ -118,15 +136,15 @@ export default async function ProjectDetailPage({
     return (
         <>
             <style>{`
-                .pd-back:hover { color: var(--text) !important; }
+                .pd-back:hover     { color: var(--text) !important; }
                 .pd-ext-link:hover { border-color: var(--accent) !important; color: var(--text) !important; }
-                .pd-tag:hover { border-color: var(--accent) !important; color: var(--text) !important; }
-                .pd-comm:hover { border-color: var(--muted) !important; }
-                .pd-member:hover { border-color: var(--accent) !important; }
+                .pd-tag:hover      { border-color: var(--accent) !important; color: var(--text) !important; }
+                .pd-comm:hover     { border-color: var(--muted) !important; }
+                .pd-member:hover   { border-color: var(--accent) !important; }
                 @media (max-width: 768px) {
                     .pd-desktop-only { display: none !important; }
-                    .pd-layout { flex-direction: column !important; }
-                    .pd-sidebar { width: 100% !important; position: static !important; }
+                    .pd-layout       { flex-direction: column !important; }
+                    .pd-sidebar      { width: 100% !important; position: static !important; }
                 }
                 @media (min-width: 769px) {
                     .pd-mobile-only { display: none !important; }
@@ -142,13 +160,10 @@ export default async function ProjectDetailPage({
                             src={project.coverImage} alt={project.title}
                             fill style={{ objectFit: "cover" }} priority sizes="100vw"
                         />
-                        {/* Fade bottom */}
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, background: "linear-gradient(to top, var(--bg), transparent)" }} />
-                        {/* Accent strip */}
                         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${accentHex}ee, ${accentHex}22)` }} />
                     </div>
                 ) : (
-                    /* Thin accent strip if no cover */
                     <div style={{ height: 3, background: `linear-gradient(90deg, ${accentHex}ee, ${accentHex}22)` }} />
                 )}
 
@@ -156,7 +171,11 @@ export default async function ProjectDetailPage({
 
                     {/* ── TOP NAV ── */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-                        <Link href="/projects" className="pd-back" style={{ fontSize: 12, color: "var(--muted)", textDecoration: "none", display: "flex", alignItems: "center", gap: 5, transition: "color 0.15s" }}>
+                        <Link
+                            href="/projects"
+                            className="pd-back"
+                            style={{ fontSize: 12, color: "var(--muted)", textDecoration: "none", display: "flex", alignItems: "center", gap: 5, transition: "color 0.15s" }}
+                        >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
                             Projects
                         </Link>
@@ -186,6 +205,13 @@ export default async function ProjectDetailPage({
                                     textDecoration: "none", transition: "all 0.15s",
                                 }}>↗ Repo</a>
                             )}
+
+                            {/* Save button — visible to everyone, sits next to other actions */}
+                            <SaveProjectButton
+                                projectId={project.id}
+                                initialSaved={initialSaved}
+                            />
+
                             {isOwner && (
                                 <ProjectStatusControl projectId={project.id} currentStatus={project.status} />
                             )}
@@ -200,6 +226,7 @@ export default async function ProjectDetailPage({
                                 liveUrl={project.liveUrl}
                                 repoUrl={project.repoUrl}
                                 currentStatus={project.status}
+                                initialSaved={initialSaved}
                             />
                         </div>
                     </div>
@@ -214,7 +241,13 @@ export default async function ProjectDetailPage({
                                     : <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text)" }}>{project.owner.username.charAt(0).toUpperCase()}</span>
                                 }
                             </div>
-                            <span style={{ fontSize: 11, color: "var(--muted)" }}>@{project.owner.username}</span>
+                            <Link
+                                href={`/user/${project.owner.username}`}
+                                style={{ fontSize: 11, color: "var(--muted)", textDecoration: "none", transition: "color 0.15s" }}
+                                className="pd-back"
+                            >
+                                @{project.owner.username}
+                            </Link>
                             {isOwner && (
                                 <span style={{ fontSize: 9, padding: "1px 7px", borderRadius: 10, background: "rgba(55,138,221,0.1)", color: "#378ADD", border: "0.5px solid rgba(55,138,221,0.25)" }}>
                                     Your project
@@ -268,7 +301,9 @@ export default async function ProjectDetailPage({
                                 </span>
                             )}
                             {project.difficulty && (
-                                <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, border: "0.5px solid var(--border)", color: "var(--muted)" }}>{project.difficulty}</span>
+                                <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, border: "0.5px solid var(--border)", color: "var(--muted)" }}>
+                                    {project.difficulty}
+                                </span>
                             )}
                             {project.estimatedDuration && (
                                 <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, border: "0.5px solid var(--border)", color: "var(--muted)" }}>
@@ -426,6 +461,14 @@ export default async function ProjectDetailPage({
                         {/* ══ SIDEBAR ══ */}
                         <div className="pd-sidebar" style={{ width: 224, flexShrink: 0, position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
 
+                            {/* Save button — mobile-visible in sidebar */}
+                            <div className="pd-mobile-only" style={{ display: "flex" }}>
+                                <SaveProjectButton
+                                    projectId={project.id}
+                                    initialSaved={initialSaved}
+                                />
+                            </div>
+
                             {/* Overview */}
                             <SideCard label="Overview">
                                 <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -449,6 +492,15 @@ export default async function ProjectDetailPage({
                                             <span style={{ fontSize: 9, color: "#fb923c", opacity: 0.7 }}>review ↓</span>
                                         </div>
                                     )}
+
+                                    {/* Save action row inside overview card */}
+                                    <div style={{ marginTop: 4, paddingTop: 10, borderTop: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                        <span style={{ fontSize: 11, color: "var(--muted)" }}>Saved</span>
+                                        <SaveProjectButton
+                                            projectId={project.id}
+                                            initialSaved={initialSaved}
+                                        />
+                                    </div>
                                 </div>
                             </SideCard>
 
@@ -476,6 +528,7 @@ export default async function ProjectDetailPage({
                                 </SideCard>
                             )}
 
+                            {/* Team */}
                             {project.teams.length > 0 && (
                                 <SideCard label={`Team · ${project.teams.length}`}>
                                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -531,7 +584,7 @@ export default async function ProjectDetailPage({
     );
 }
 
-// ─── Shared layout components ─────────────────────────────────────────────────
+// ─── Shared layout sub-components ────────────────────────────────────────────
 
 function Card({ label, children }: { label: string; children: React.ReactNode }) {
     return (

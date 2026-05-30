@@ -1,6 +1,3 @@
-// app/(dashboard)/profile/page.tsx
-// Redirects to /user/username (no @ — @ conflicts with Next.js parallel routes)
-
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +14,5 @@ export default async function ProfilePage() {
 
     if (!user?.username) redirect("/login");
 
-    // /user/username — NO @ prefix (@ breaks Next.js routing)
     redirect(`/user/${user.username}`);
 }

@@ -20,9 +20,7 @@ export default function UserAvatar({
     userId, name, image, username,
     size = 32, showTooltip = false, clickable = true,
 }: Props) {
-    // Use username if available, otherwise fall back to UUID
-    // NO @ prefix — @ conflicts with Next.js parallel route convention
-    const href = username ? `/user/${username}` : `/user/${userId}`;
+   const href = username ? `/user/${username}` : `/user/${userId}`;
 
     const inner = (
         <div
