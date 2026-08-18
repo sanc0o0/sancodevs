@@ -74,7 +74,7 @@ export default function HeroBackground() {
                         transition: "opacity 0.6s ease 0.1s",
                     }}>
                         <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-                        {count}+ developers learning right now
+                        {count}+ developers building together right now
                     </div>
 
                     <div style={{ width: "28px", height: "2px", background: "var(--accent)" }} />
@@ -85,9 +85,9 @@ export default function HeroBackground() {
                         opacity: visible ? 1 : 0,
                         transition: "opacity 0.8s ease 0.15s",
                     }}>
-                        Learn to build.<br />
-                        Ship real projects.<br />
-                        Grow as a dev.
+                        Find your team.<br />
+                        Build real projects.<br />
+                        Own your reputation.
                     </h1>
 
                     <p style={{
@@ -96,8 +96,9 @@ export default function HeroBackground() {
                         opacity: visible ? 1 : 0,
                         transition: "opacity 0.8s ease 0.25s",
                     }}>
-                        SancoDevs gives you a guided learning path, real project accountability,
-                        and the Git skills that actually get you hired.
+                        SancoDevs connects you with real projects and real teams. List or
+                        join a project, build a developer profile that shows your work,
+                        and manage everything from one workspace.
                     </p>
 
                     <div style={{
@@ -142,8 +143,8 @@ export default function HeroBackground() {
                         transition: "opacity 0.8s ease 0.45s",
                     }}>
                         {[
-                            { value: "6", label: "Learning paths" },
-                            { value: "36+", label: "Guided modules" },
+                            { value: "50+", label: "Open projects" },
+                            { value: "200+", label: "Developer profiles" },
                             { value: "100%", label: "Free to start" },
                         ].map((s, i) => (
                             <div key={i} style={{ textAlign: "center" }}>
@@ -161,43 +162,44 @@ export default function HeroBackground() {
                     <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
                         <div style={{ width: "28px", height: "2px", background: "var(--accent)", margin: "0 auto 1rem" }} />
                         <h2 style={{ fontSize: "clamp(20px, 4vw, 30px)", fontWeight: 500, color: "var(--text)", marginBottom: "8px" }}>
-                            Everything you need to actually ship
+                            Everything you need to build with others
                         </h2>
                         <p style={{ fontSize: "14px", color: "var(--muted)", maxWidth: "420px", margin: "0 auto", lineHeight: 1.7 }}>
-                            Not another tutorial platform. A system that takes you from beginner to builder.
+                            Not just another profile page. A real system for finding projects,
+                            teammates, and getting things shipped.
                         </p>
                     </div>
                     <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
                         {[
                             {
                                 icon: "◈",
-                                title: "Personalised learning paths",
-                                desc: "Tell us what you know and what you want to build. We generate a step-by-step path tailored exactly to you — no guessing what to learn next.",
+                                title: "Project listings",
+                                desc: "Browse open projects looking for collaborators, or list your own. Filter by tech stack and the role you're looking to fill.",
                             },
                             {
                                 icon: "▣",
-                                title: "Real project accountability",
-                                desc: "Commit to a project — solo or with a team. Once you commit, you finish. No demo projects that never get deployed.",
+                                title: "Real project collaboration",
+                                desc: "Join a team, commit to your part, and ship together. No abandoned side projects real accountability with real people.",
                             },
                             {
                                 icon: "⊕",
-                                title: "Git & open source from day one",
-                                desc: "Learn the workflows real teams use: branching, PRs, reviews, and contributing to open source. The skills that get you hired.",
+                                title: "Git workflows that matter",
+                                desc: "Practice the workflows real teams use: branching, PRs, and reviews on actual projects with actual collaborators.",
                             },
                             {
                                 icon: "⊞",
-                                title: "Module-by-module guidance",
-                                desc: "Each module has clear objectives, curated resources, and a completion checkpoint. No more rabbit holes or decision fatigue.",
+                                title: "One workspace for everything",
+                                desc: "Manage your active projects, tasks, and team communication from a single, organized workspace.",
                             },
                             {
                                 icon: "◎",
-                                title: "Track your progress",
-                                desc: "See exactly where you are in your path, what you've completed, and what's next. Your progress is saved and never lost.",
+                                title: "Developer profile & reputation",
+                                desc: "Build a profile that shows your tech stack, projects, and reliability tracked across communication, execution, and ownership.",
                             },
                             {
                                 icon: "⊟",
-                                title: "Built for beginners",
-                                desc: "Every path starts from where you are today. We don't assume prior knowledge — we build it with you, step by step.",
+                                title: "A real developer community",
+                                desc: "Connect with other builders, form teams, and find people to collaborate with whatever you're working on.",
                             },
                         ].map((f, i) => (
                             <div key={i} className="card-hover" style={{
@@ -224,10 +226,10 @@ export default function HeroBackground() {
                     }}>
                         <div style={{ width: "24px", height: "2px", background: "var(--accent)", margin: "0 auto 1.25rem" }} />
                         <h2 style={{ fontSize: "22px", fontWeight: 500, color: "var(--text)", marginBottom: "8px" }}>
-                            Ready to start building?
+                            Ready to build with others?
                         </h2>
                         <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.7, marginBottom: "1.5rem" }}>
-                            Join SancoDevs for free. Pick your path, commit to a project, and ship something real.
+                            Join SancoDevs for free. Set up your profile, find a project, and start collaborating with real developers.
                         </p>
                         <Link href="/signup" style={{
                             display: "inline-block", padding: "10px 28px", borderRadius: "8px",
