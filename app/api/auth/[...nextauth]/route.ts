@@ -26,7 +26,9 @@ adapter.createUser = async (
             email: data.email,
             name: data.name,
             image: data.image,
-            emailVerified: data.emailVerified,
+            //OAuth providers already proved ownership of this address
+            // emailVerified: data.emailVerified,
+            emailVerified: new Date(),
 
             username,
         },
@@ -66,6 +68,11 @@ export const authOptions: NextAuthOptions = {
                 );
 
                 if (!passwordMatch) return null;
+
+                if (!user.emailVerified) {
+                    throw new Error("Email not verified."
+                    );
+                }
 
                 return {
                     id: user.id,

@@ -25,15 +25,30 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const isWebView = useIsWebView();
+    const [unverified, setUnverified] = useState(false);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
         setError("");
+        setUnverified(false);
         const res = await signIn("credentials", { email, password, redirect: false });
         setLoading(false);
-        if (res?.error) setError("Invalid email or password.");
-        else router.push("/dashboard");
+        if (res?.error === "Email not verified.") {
+            setUnverified(true);
+        } else if (res?.error) {
+            setError("Invalid email or password.");
+        } else {
+            router.push("/dashboard");
+        }
+    }
+
+    async function resendVerification() {
+        await fetch("/api/auth/resend-verification", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+        });
     }
 
     return (
@@ -142,6 +157,19 @@ export default function LoginPage() {
 
                     {error && (
                         <p style={{ fontSize: "12px", color: "#e24b4a" }}>{error}</p>
+                    )}
+
+                    {unverified && (
+                        <p style={{ fontSize: "12px", color: "var(--muted)" }}>
+                            Your email isn&apos;t verified yet.{" "}
+                            <button
+                                type="button"
+                                onClick={resendVerification}
+                                style={{ background: "none", border: "none", color: "var(--text)", textDecoration: "underline", cursor: "pointer", padding: 0, fontSize: "12px" }}
+                            >
+                                Resend verification email
+                            </button>
+                        </p>
                     )}
 
                     <button

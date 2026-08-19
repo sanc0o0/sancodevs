@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { validatePassword, PASSWORD_RULES } from "@/lib/password";
 
 export default function SignupPage() {
     const router = useRouter();
@@ -12,8 +13,21 @@ export default function SignupPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    const passwordChecks = [
+        { label: "8+ characters", passed: password.length >= PASSWORD_RULES.minLength },
+        { label: "Uppercase letter", passed: PASSWORD_RULES.hasUpper.test(password) },
+        { label: "Lowercase letter", passed: PASSWORD_RULES.hasLower.test(password) },
+        { label: "Number", passed: PASSWORD_RULES.hasNumber.test(password) },
+        { label: "Special character", passed: PASSWORD_RULES.hasSpecial.test(password) },
+    ];
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+            setError(passwordError);
+            return;
+        }
         setLoading(true);
         setError("");
         const res = await fetch("/api/auth/register", {
@@ -24,7 +38,7 @@ export default function SignupPage() {
         const data = await res.json();
         setLoading(false);
         if (!res.ok) setError(data.error || "Something went wrong.");
-        else router.push("/login?registered=true");
+        else router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     }
 
     const fields = [
@@ -74,6 +88,27 @@ export default function SignupPage() {
                                 onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                                 onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
                             />
+
+                            {field.label === "Password" && password.length > 0 && (
+                                <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "3px" }}>
+                                    {passwordChecks.map(check => (
+                                        <div key={check.label} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <span style={{
+                                                fontSize: "10px",
+                                                color: check.passed ? "var(--accent)" : "var(--muted)",
+                                            }}>
+                                                {check.passed ? "✓" : "○"}
+                                            </span>
+                                            <span style={{
+                                                fontSize: "11px",
+                                                color: check.passed ? "var(--text)" : "var(--muted)",
+                                            }}>
+                                                {check.label}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ))}
 
